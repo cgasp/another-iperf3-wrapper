@@ -1,0 +1,8 @@
+{
+    "default": {
+        "host": "",
+        "port": "",
+        "time": "",
+        "result_dst_path": ""
+    }
+}
