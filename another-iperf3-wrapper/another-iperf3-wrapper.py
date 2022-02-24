@@ -69,6 +69,19 @@ def execute_cmd_bg_save_output(cmd, write_mode="w", outputfile=""):
         Popen(cmd.split(), stdout=f)  # This will run in the background
 
 
+def parse_text_to_list(regex, text):
+    # rex = re.compile(regex, re.MULTILINE)
+    # result = rex.search(text).groupdict()
+
+    matches = re.finditer(regex, text, re.MULTILINE)
+
+    matches_list = []
+    for match in matches:
+        matches_list.append(match.groupdict())
+
+    return matches_list
+
+
 def probe_iperf3(host, ports_list, required_ports=2):
     log.info(
         f"start probing for available iperf3 ports - port range: {ports_list[0]} - {ports_list[-1]} | amount of required ports: {required_ports}"
@@ -159,7 +172,7 @@ def run_commands(commands):
                     log.debug(f"Exception: {e}")
                     time.sleep(1)
 
-                """
+                """ 20220224
                 if not process.poll() is None:
                     print(f"cmd: {cmd} returncode: {process.poll()}")
                     log.info(process.stdout.read())
@@ -198,9 +211,29 @@ def run_commands(commands):
 
 
 def parse_ping_output(output):
-    output_lines = output.split("\n")
 
     stats = {}
+
+    # Parse line => 15 packets transmitted, 15 received, 0% packet loss, time 14021ms
+    regex = r"(?P<pckts_tx>\d+) packets transmitted, (?P<pckts_rx>\d+) received, (?P<pckts_loss_perc>[\d\.]+)% packet loss, time (?P<time>\d+)ms"
+    parsed_data = parse_text_to_list(regex, output)
+    stats.update(parsed_data[0])
+
+    # Parse line => rtt min/avg/max/mdev = 7.360/16.159/31.052/9.404 ms
+    regex = r"rtt min/avg/max/mdev = (?P<rtt_min>[\d\.]+)/(?P<rtt_avg>[\d\.]+)/(?P<rtt_max>[\d\.]+)/(?P<rtt_mdev>[\d\.]+) ms"
+    parsed_data = parse_text_to_list(regex, output)
+    stats.update(parsed_data[0])
+
+    # Parse lines =>
+    # [1645533781.102614] 64 bytes from 172.16.1.238: icmp_seq=1 ttl=60 time=7.36 ms
+    # [1645533782.109318] 64 bytes from 172.16.1.238: icmp_seq=2 ttl=60 time=12.3 ms
+    # [1645533783.107913] 64 bytes from 172.16.1.238: icmp_seq=3 ttl=60 time=9.35 ms
+    #
+    regex = r"\[(?P<unix_time>\d+\.\d+)\]\s\d+\sbytes\sfrom\s(?P<target_host>([\d\.]+)):\sicmp_seq=(?P<icmp_seq>\d+)\sttl=(?P<icmp_ttl>\d+)\stime=(?P<icmp_time>([\d\.]+))\sms"
+    pckts_stats = parse_text_to_list(regex, output)
+
+    """ 20220224
+    output_lines = output.split("\n")
     for line in output_lines:
         if "packets transmitted," in line:
             stats.update(
@@ -229,6 +262,7 @@ def parse_ping_output(output):
             )
         except:
             print(f"Could not parse : {pckt_stats_line}")
+    """
 
     ping_results = {"stats": stats, "pckts_stats": pckts_stats}
     return ping_results
@@ -302,15 +336,15 @@ def main(args):
 
         bufferbloat_iperf3_commands = [cmd_iperf3_ds, cmd_iperf3_us]
 
-        if not args.no_probe:
+        if not args.no_probe and not args.dry_run:
             free_ports = probe_iperf3(args.host, port_list, required_ports)
 
-        for idx, cmd in enumerate(bufferbloat_iperf3_commands):
-            bufferbloat_iperf3_commands[idx] = re.sub(
-                r"-p\s+\d+\s",
-                f"-p {free_ports[idx]} ",
-                bufferbloat_iperf3_commands[idx],
-            )
+            for idx, cmd in enumerate(bufferbloat_iperf3_commands):
+                bufferbloat_iperf3_commands[idx] = re.sub(
+                    r"-p\s+\d+\s",
+                    f"-p {free_ports[idx]} ",
+                    bufferbloat_iperf3_commands[idx],
+                )
 
         scenario_time = str(int(args.time) + 10)
 
