@@ -26,7 +26,11 @@ log = logging.getLogger("another-iperf3-wrapper")
 
 
 def setup_logger(logging_level):
+    """setup logger for logging
 
+    Args:
+        logging_level (obj): logging.CRITICAL|DEBUG|INFO
+    """
     # create logger
     logger = logging.getLogger("another-iperf3-wrapper")
     logger.setLevel(logging_level)
@@ -63,13 +67,16 @@ def get_timestamp_now(fmt="%Y%m%d-%H%M%S"):
     return datetime.datetime.now().strftime(fmt)
 
 
-def execute_cmd_bg_save_output(cmd, write_mode="w", outputfile=""):
-
-    with open(outputfile, write_mode) as f:
-        Popen(cmd.split(), stdout=f)  # This will run in the background
-
-
 def parse_text_to_list(regex, text):
+    """parse given 'text' with given 'regex' and return list of matches
+
+    Args:
+        regex (r-str): regex
+        text (str): text to parse
+
+    Returns:
+        list: with dict of matches
+    """
     # rex = re.compile(regex, re.MULTILINE)
     # result = rex.search(text).groupdict()
 
@@ -83,6 +90,16 @@ def parse_text_to_list(regex, text):
 
 
 def probe_iperf3(host, ports_list, required_ports=2):
+    """function to probe open port on iperf3 server - usefull when several port opens
+
+    Args:
+        host (str): iperf3 server
+        ports_list (list): port to probe
+        required_ports (int, optional): define amount of required port for running iperf3. Defaults to 2.
+
+    Returns:
+        list: available port for running iperf3
+    """
     log.info(
         f"start probing for available iperf3 ports - port range: {ports_list[0]} - {ports_list[-1]} | amount of required ports: {required_ports}"
     )
@@ -94,12 +111,12 @@ def probe_iperf3(host, ports_list, required_ports=2):
             result = check_output(cmd, universal_newlines=True, shell=True)
             if "iperf Done." in result:
                 available_ports.append(port)
-            if len(available_ports) == 2:
+            if len(available_ports) == required_ports:
                 break
         except Exception as e:
-            print(f"exception: {e}")
+            log.debug(f"exception: {e}")
     if len(available_ports) < required_ports:
-        print("not enough ports to run tests")
+        log.warning("not enough ports to run tests")
         exit(1)
     log.info(
         f"probe finished - following port available to be used => {available_ports}"
@@ -107,11 +124,19 @@ def probe_iperf3(host, ports_list, required_ports=2):
     return available_ports
 
 
-def generate_iperf3_cmds(cmds_args_iperf3):
+def generate_cmds(base_cmd, cmds_args):
+    """from given iperf3 args generate commands
+
+    Args:
+        cmds_args (list): list of arguments for iperf3 commands
+
+    Returns:
+        cmd: commands list
+    """
     # generate command
     cmds = []
-    for cmd_args in cmds_args_iperf3:
-        cmd = f"iperf3"
+    for cmd_args in cmds_args:
+        cmd = base_cmd
         for arg in cmd_args:
             cmd += f" {arg}"
             cmd.strip()
@@ -119,34 +144,76 @@ def generate_iperf3_cmds(cmds_args_iperf3):
     return cmds
 
 
-def expand_iperf3_args(args_iperf3):
-    args_iperf3_expanded = {}
-    for arg, value in args_iperf3.items():
+def expand_cmds_args(cmds_args):
+    """expand numeric values from list and range on args
+
+    Args:
+        cmds_args (dict): arguments to expand
+
+    Returns:
+        dict: arguments expanded
+    """
+    cmds_args_expanded = {}
+    new_arg_value = []
+    for arg, value in cmds_args.items():
+        new_arg_value = []
+        # split if ',' else return list
         value = value.split(",") if "," in value else [value]
         for v in value:
             if "-" in v:
-                range_n = v.split("-")
-                new_value = list(range(int(range_n[0]), int(range_n[1])))
+                # try to expand numerical range
+                try:
+                    range_n = v.split("-")
+                    new_v = [
+                        str(element)
+                        for element in list(range(int(range_n[0]), int(range_n[1])))
+                    ]
+                    new_arg_value.extend(new_v)
+                except Exception as e:
+                    log.debug(f"Exception: {e}")
+                    log.warning(f"seems not a valid range: {range_n}")
+                    new_arg_value.append(v)
             else:
-                new_value = value
-        args_iperf3_expanded[arg] = new_value
-    return args_iperf3_expanded
+                new_arg_value.append(v)
+        # save new value
+        cmds_args_expanded[arg] = new_arg_value
+
+    log.debug(f"arguments expanded: {cmds_args_expanded}")
+
+    return cmds_args_expanded
 
 
-def generate_iperf3_cmds_args(args_iperf3_expanded):
-    l = []
-    for arg, value in args_iperf3_expanded.items():
+def generate_cmds_args(cmds_args_expanded):
+    """generate all possible commands by given arguments
+
+    Args:
+        cmds_args_expanded (dict): expanded arguments
+
+    Returns:
+        list: given arguments return list of possible commands
+    """
+
+    ls = []
+    for arg, value in cmds_args_expanded.items():
         arg_list = []
         for v in value:
             arg_list.append(f"{arg} {v}")
-        l.append(arg_list)
+        ls.append(arg_list)
 
-    args_iperf3_all_permutations = list(itertools.product(*l))
-    return args_iperf3_all_permutations
-    # print(args_iperf3_all_permutations)
+    cmds_args_all_permutations = list(itertools.product(*ls))
+    log.debug(f"generated commands: {cmds_args_all_permutations}")
+    return cmds_args_all_permutations
 
 
 def run_commands(commands):
+    """run commands dict from a
+
+    Args:
+        commands (dict): commands to run and sleep time between them
+
+    Returns:
+        dict: output from command execution
+    """
     processes = {}
     output = {}
     if not args.dry_run:
@@ -172,24 +239,13 @@ def run_commands(commands):
                     log.debug(f"Exception: {e}")
                     time.sleep(1)
 
-                """ 20220224
-                if not process.poll() is None:
-                    print(f"cmd: {cmd} returncode: {process.poll()}")
-                    log.info(process.stdout.read())
-                    output[cmd] = process.stdout.read()
-                    del processes[cmd]
-                    break
-                else:
-                    print(f"cmd: {cmd} returncode: {process.poll()}")
-                    time.sleep(0.1)
-                """
-
             if not processes:
                 break
             time.sleep(1)
         log.info("processes finished")
 
     else:
+        # dry-run mode - load output from file
         with open(
             "samples/iperf3_c172.16.1.238_p5201_t5_P10_J_20220222-170451.json",
             "r",
@@ -207,11 +263,19 @@ def run_commands(commands):
             "r",
         ) as f:
             output["ping 172.16.1.238 -c 15 -D"] = f.read()
+
     return output
 
 
 def parse_ping_output(output):
+    """parse pint output with regex
 
+    Args:
+        output (str): text to parse
+
+    Returns:
+        dict: parsed data (stats and pckts_stats) in dict
+    """
     stats = {}
 
     # Parse line => 15 packets transmitted, 15 received, 0% packet loss, time 14021ms
@@ -232,48 +296,31 @@ def parse_ping_output(output):
     regex = r"\[(?P<unix_time>\d+\.\d+)\]\s\d+\sbytes\sfrom\s(?P<target_host>([\d\.]+)):\sicmp_seq=(?P<icmp_seq>\d+)\sttl=(?P<icmp_ttl>\d+)\stime=(?P<icmp_time>([\d\.]+))\sms"
     pckts_stats = parse_text_to_list(regex, output)
 
-    """ 20220224
-    output_lines = output.split("\n")
-    for line in output_lines:
-        if "packets transmitted," in line:
-            stats.update(
-                re.match(
-                    r"(?P<pckts_tx>\d+) packets transmitted, (?P<pckts_rx>\d+) received, (?P<pckts_loss_perc>[\d\.]+)% packet loss, time (?P<time>\d+)ms",
-                    line,
-                ).groupdict()
-            )
-        elif "min/avg/max/mdev" in line:
-            stats.update(
-                re.match(
-                    r"rtt min/avg/max/mdev = (?P<rtt_min>[\d\.]+)/(?P<rtt_avg>[\d\.]+)/(?P<rtt_max>[\d\.]+)/(?P<rtt_mdev>[\d\.]+) ms",
-                    line,
-                ).groupdict()
-            )
-    pckts_stats_line_cnt = int(stats["pckts_tx"]) + 1
-
-    pckts_stats = []
-    for pckt_stats_line in output_lines[1:pckts_stats_line_cnt]:
-        try:
-            pckts_stats.append(
-                re.match(
-                    r"\[(?P<unix_time>\d+\.\d+)\]\s\d+\sbytes\sfrom\s(?P<target_host>([\d\.]+)):\sicmp_seq=(?P<icmp_seq>\d+)\sttl=(?P<icmp_ttl>\d+)\stime=(?P<icmp_time>([\d\.]+))\sms",
-                    pckt_stats_line,
-                ).groupdict()
-            )
-        except:
-            print(f"Could not parse : {pckt_stats_line}")
-    """
-
     ping_results = {"stats": stats, "pckts_stats": pckts_stats}
     return ping_results
 
 
 def save_outputs(filename, output):
+    """save output from process into filename
+
+    Args:
+        filename (str): target filename with full path
+        output (str): content to save
+    """
     with open(filename, "a") as f:
         f.write(output)
 
 
-def normalize_dict(keys, dict):
+def fill_dict(keys, dict):
+    """copy key/values from a dict and add empty entries if keys not present
+
+    Args:
+        keys (list): keys to add empty str
+        dict (dict): source dictionary to normalize
+
+    Returns:
+        dict: dict with empty keys
+    """
     d = {}
     d.update({k: dict[k] for k in keys if k in dict})
     d.update({k: "" for k in keys if k not in dict})
@@ -281,6 +328,13 @@ def normalize_dict(keys, dict):
 
 
 def save_CSV(dst_filename, header, csv_content):
+    """save into CSV file
+
+    Args:
+        dst_filename (str): CSV file destination
+        header (list): list of keys to be saved
+        csv_content (list): list of dict with keys
+    """
     with open(dst_filename, "w") as output_file:
         dict_writer = csv.DictWriter(output_file, header)
         dict_writer.writeheader()
@@ -289,13 +343,18 @@ def save_CSV(dst_filename, header, csv_content):
 
 
 def main(args):
+    """main run
+
+    Args:
+        args (obj): main program obj
+    """
 
     runtest_time = get_timestamp_now()
 
     if args.description:
         args.description += "_"
 
-    args_iperf3 = {
+    cmds_args = {
         "-c": args.host,
         "-p": args.port,
         "-t": args.time,
@@ -304,10 +363,9 @@ def main(args):
         "-R": "",
     }
 
-    args_iperf3_expanded = expand_iperf3_args(args_iperf3)
-    cmds_args_iperf3_generated = generate_iperf3_cmds_args(args_iperf3_expanded)
-    iperf3_cmds = generate_iperf3_cmds(cmds_args_iperf3_generated)
-    commands = iperf3_cmds
+    cmds_args_expanded = expand_cmds_args(cmds_args)
+    cmds_args_generated = generate_cmds_args(cmds_args_expanded)
+    commands = generate_cmds("iperf3", cmds_args_generated)
 
     if args.cmd == "bufferbloat":
 
@@ -454,7 +512,7 @@ def main(args):
             csv_content_line = {"timestamp": k}
             csv_content_line.update(interval_stats_datapoint)
             # header.update(list(csv_content_line.keys()))
-            csv_content_line = normalize_dict(relevant_keys, csv_content_line)
+            csv_content_line = fill_dict(relevant_keys, csv_content_line)
             csv_content.append(csv_content_line)
 
         relevant_keys = sorted(list(relevant_keys))
