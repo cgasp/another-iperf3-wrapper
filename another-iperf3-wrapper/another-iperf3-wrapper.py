@@ -138,20 +138,44 @@ def run_commands(commands):
     output = {}
     if not args.dry_run:
         for cmd, sleep_time in commands.items():
+            log.info(f"Execute cmd: '{cmd}' in a new process")
             processes[cmd] = Popen(cmd.split(), stdout=PIPE, universal_newlines=True)
             time.sleep(sleep_time)
+        log.info("processes check start")
         for t in range(1, args.timeout):
             for cmd, process in processes.items():
+                log.debug(f"process pid: {process.pid} cmd: {cmd}")
+
+                try:
+                    outs, errs = process.communicate(timeout=1)
+                    log.debug(outs)
+                    output[cmd] = outs  # process.stdout.read()
+                    # make sure process completed
+                    process.kill()
+                    del processes[cmd]
+                    # break to re-iterate over
+                    break
+                except Exception as e:
+                    log.debug(f"Exception: {e}")
+                    time.sleep(1)
+
+                """
                 if not process.poll() is None:
-                    # print(process.stdout.read())
+                    print(f"cmd: {cmd} returncode: {process.poll()}")
+                    log.info(process.stdout.read())
                     output[cmd] = process.stdout.read()
                     del processes[cmd]
                     break
                 else:
+                    print(f"cmd: {cmd} returncode: {process.poll()}")
                     time.sleep(0.1)
+                """
+
             if not processes:
                 break
             time.sleep(1)
+        log.info("processes finished")
+
     else:
         with open(
             "samples/iperf3_c172.16.1.238_p5201_t5_P10_J_20220222-170451.json",
@@ -177,18 +201,21 @@ def parse_ping_output(output):
     output_lines = output.split("\n")
 
     stats = {}
-    stats.update(
-        re.match(
-            r"(?P<pckts_tx>\d+) packets transmitted, (?P<pckts_rx>\d+) received, (?P<pckts_loss_perc>[\d\.]+)% packet loss, time (?P<time>\d+)ms",
-            output_lines[-3],
-        ).groupdict()
-    )
-    stats.update(
-        re.match(
-            r"rtt min/avg/max/mdev = (?P<rtt_min>[\d\.]+)/(?P<rtt_avg>[\d\.]+)/(?P<rtt_max>[\d\.]+)/(?P<rtt_mdev>[\d\.]+) ms",
-            output_lines[-2],
-        ).groupdict()
-    )
+    for line in output_lines:
+        if "packets transmitted," in line:
+            stats.update(
+                re.match(
+                    r"(?P<pckts_tx>\d+) packets transmitted, (?P<pckts_rx>\d+) received, (?P<pckts_loss_perc>[\d\.]+)% packet loss, time (?P<time>\d+)ms",
+                    line,
+                ).groupdict()
+            )
+        elif "min/avg/max/mdev" in line:
+            stats.update(
+                re.match(
+                    r"rtt min/avg/max/mdev = (?P<rtt_min>[\d\.]+)/(?P<rtt_avg>[\d\.]+)/(?P<rtt_max>[\d\.]+)/(?P<rtt_mdev>[\d\.]+) ms",
+                    line,
+                ).groupdict()
+            )
     pckts_stats_line_cnt = int(stats["pckts_tx"]) + 1
 
     pckts_stats = []
@@ -293,6 +320,7 @@ def main(args):
             bufferbloat_iperf3_commands[1]: 0.1,
         }
         for cmd in scenario_cmds.keys():
+            print()
             log.info(f"commands: {cmd}")
 
         output_commands = run_commands(scenario_cmds)
@@ -434,5 +462,6 @@ if __name__ == "__main__":
     log = logging.getLogger("another-iperf3-wrapper")
 
     log.debug(f"args: \n{args}")
+    log.debug(f"config: \n{config}")
 
     main(args)
