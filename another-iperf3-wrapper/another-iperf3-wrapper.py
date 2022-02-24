@@ -433,6 +433,8 @@ def main(args):
                         ]
                     )
 
+        summary_stats["description"] = args.description
+
         # Save data into CSV
         keys_sorted = list(sorted(interval_stats.keys()))
 
