@@ -7,6 +7,7 @@
 
 import datetime
 import itertools
+from multiprocessing.sharedctypes import Value
 import re
 import json
 import csv
@@ -342,6 +343,47 @@ def save_CSV(dst_filename, header, csv_content):
         log.info(f"CSV wrote in {dst_filename}")
 
 
+def check_port_arg(arg_port):
+    port_list = []
+    try:
+        port_list = [int(arg_port)]
+    except ValueError:
+        log.debug(f"ValuError: {arg_port}")
+        range_char = [",", "-"]
+        is_range = any([char in arg_port for char in range_char])
+        if is_range:
+            if "," in arg_port:
+                ranges = arg_port.split(",")
+            else:
+                ranges = [arg_port]
+
+            for r in ranges:
+                r_count_sep = r.count("-")
+                if r_count_sep == 1:
+                    start_port, end_port = r.split("-")
+                    try:
+                        port_list_range = list(
+                            range(int(start_port), int(end_port) + 1)
+                        )
+                        if port_list_range:
+                            port_list.extend(port_list_range)
+                        else:
+                            log.debug(f"Not a valid range: {start_port} -> {end_port}")
+                    except ValueError:
+                        log.debug(f"Not a valid number: {r}")
+
+                elif r_count_sep == 0:
+                    try:
+                        port_list.append(int(r))
+                    except ValueError:
+                        log.debug(f"Not a valid number: {r}")
+                else:
+                    log.debug(f"range invalid: {r}")
+    log.debug(f"port list: {port_list}")
+
+    return port_list
+
+
 def main(args):
     """main run
 
@@ -354,21 +396,58 @@ def main(args):
     if args.description:
         args.description += "_"
 
+    port_list = check_port_arg(args.port)
+
     cmds_args = {
         "-c": args.host,
-        "-p": args.port,
+        "-p": str(port_list[0]),
         "-t": args.time,
         "-P": args.parallel,
         "-J": "",
-        "-R": "",
     }
+
+    if args.reverse:
+        cmds_args["R"] = ""
 
     cmds_args_expanded = expand_cmds_args(cmds_args)
     cmds_args_generated = generate_cmds_args(cmds_args_expanded)
     commands = generate_cmds("iperf3", cmds_args_generated)
 
+    if args.cmd == "probe":
+        if not args.no_probe and not args.dry_run:
+            free_ports = probe_iperf3(args.host, port_list, required_ports=1)
+
+            cmd = commands[0]
+            cmd = re.sub(
+                r"-p\s+\d+\s",
+                f"-p {free_ports[0]} ",
+                cmd,
+            )
+
+        scenario_cmds = {
+            cmd: 0.1,
+        }
+
+        output_commands = run_commands(scenario_cmds)
+
+        for cmd, output in output_commands.items():
+            if "iperf3" in cmd:
+                output_commands[cmd] = {
+                    "output_parsed": json.loads(output),
+                    "type": "iperf3",
+                }
+                ext = ".json"
+
+                # print(output)
+
     if args.cmd == "bufferbloat":
 
+        if len(port_list) == 1:
+            port_list[1] = port_list[0] + 1
+            log.warn(
+                f"Only one port given ({port_list[0]}) - 2 required - automatically added a second one next to first one {port_list[1]}"
+            )
+        """
         if args.port_range:
             try:
                 port_range = args.port_range.split("-")
@@ -384,7 +463,7 @@ def main(args):
         if required_ports == 1:
             print("not a valid port range | --port-range required ")
             exit(0)
-
+        """
         if "-R" in commands[0]:
             cmd_iperf3_us = commands[0].replace("-R", "")
             cmd_iperf3_ds = commands[0]
@@ -395,7 +474,7 @@ def main(args):
         bufferbloat_iperf3_commands = [cmd_iperf3_ds, cmd_iperf3_us]
 
         if not args.no_probe and not args.dry_run:
-            free_ports = probe_iperf3(args.host, port_list, required_ports)
+            free_ports = probe_iperf3(args.host, port_list, required_ports=2)
 
             for idx, cmd in enumerate(bufferbloat_iperf3_commands):
                 bufferbloat_iperf3_commands[idx] = re.sub(
@@ -412,7 +491,6 @@ def main(args):
             bufferbloat_iperf3_commands[1]: 0.1,
         }
         for cmd in scenario_cmds.keys():
-            print()
             log.info(f"commands: {cmd}")
 
         output_commands = run_commands(scenario_cmds)
