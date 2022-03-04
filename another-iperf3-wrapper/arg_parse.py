@@ -60,7 +60,7 @@ Wrapper to expand iperf3 capabilities
         dest="parallel",
         action="store",
         type=str,
-        default=config_default.get("parallel", "10"),
+        default=config_default.get("parallel", "1"),
         required=False,
         help="number of parallel client streams to run",
     )

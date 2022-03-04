@@ -5,20 +5,21 @@
 # - Add Logging
 # - Comment & Docstring
 
+from asyncio import subprocess
 import datetime
 import itertools
-from multiprocessing.sharedctypes import Value
 import re
 import json
 import csv
 import logging
 import os
 import sys
+import statistics
 
 import arg_parse
 
 import time
-from subprocess import Popen, PIPE, check_output
+from subprocess import Popen, PIPE, check_output, run
 
 from rich import print
 
@@ -384,6 +385,20 @@ def check_port_arg(arg_port):
     return port_list
 
 
+def calculate_tput_BDP(buffer_size, latency):
+    """return max throughtput achievable with given buffer size and latency
+
+    Args:
+        buffer_size ([type]): in bytes
+        latency ([type]): in ms
+    """
+
+    buffer_size_bits = buffer_size * 8
+    latency_sec = latency * pow(10, -3)
+
+    return buffer_size_bits / latency_sec
+
+
 def main(args):
     """main run
 
@@ -438,7 +453,43 @@ def main(args):
                 }
                 ext = ".json"
 
+                streams_rtt = []
+                for interval in output_commands[cmd]["output_parsed"]["intervals"]:
+                    streams_rtt.append(float(interval["streams"][0]["rtt"] / 1000))
+
+                mean_streams_rtt = statistics.mean(streams_rtt)
+
+                print(f"mean_streams_rtt: {mean_streams_rtt}")
+
+                # current receiver window size 'cat /proc/sys/net/ipv4/tcp_rmem'
+                cmd = "cat /proc/sys/net/ipv4/tcp_rmem"
+                tcp_rmem = run(cmd.split(), capture_output=True, text=True).stdout
+                cmd = "cat /proc/sys/net/ipv4/tcp_wmem"
+                tcp_wmem = run(cmd.split(), capture_output=True, text=True).stdout
+
+                # receiving data
+                print(f"tcp_rmem: {tcp_rmem}")
+
+                # sending data
+                print(f"tcp_wmem: {tcp_wmem}")
+
+                max_wmem = float(tcp_wmem.strip().split("\t")[-1])
+
+                max_tput = calculate_tput_BDP(max_wmem, mean_streams_rtt)
+
+                print(f"max sending theoritical tput: {max_tput}")
+
+                max_wmem = float(tcp_rmem.strip().split("\t")[-1])
+
+                max_tput = calculate_tput_BDP(max_wmem, mean_streams_rtt)
+
+                print(f"max receiving theoritical tput: {max_tput}")
+
                 # print(output)
+
+        output_commands["iperf3 -c 62.202.138.238 -p 5003 -t 5 -P 1 -J "][
+            "output_parsed"
+        ]["intervals"][4]["streams"][0]["rtt"]
 
     if args.cmd == "bufferbloat":
 
