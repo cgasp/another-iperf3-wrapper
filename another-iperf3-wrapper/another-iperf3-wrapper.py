@@ -295,6 +295,8 @@ def parse_ping_output(output):
     # [1645533782.109318] 64 bytes from 172.16.1.238: icmp_seq=2 ttl=60 time=12.3 ms
     # [1645533783.107913] 64 bytes from 172.16.1.238: icmp_seq=3 ttl=60 time=9.35 ms
     #
+
+    # TODO : support ipv6
     regex = r"\[(?P<unix_time>\d+\.\d+)\]\s\d+\sbytes\sfrom\s(?P<target_host>([\d\.]+)):\sicmp_seq=(?P<icmp_seq>\d+)\sttl=(?P<icmp_ttl>\d+)\stime=(?P<icmp_time>([\d\.]+))\sms"
     pckts_stats = parse_text_to_list(regex, output)
 
@@ -399,6 +401,38 @@ def calculate_tput_BDP(buffer_size, latency):
     return buffer_size_bits / latency_sec
 
 
+def get_max_tcp_mem(type):
+    """[summary]
+
+    Args:
+        type ([type]): tcp_wmem or tcp_rmem
+    """
+    # current receiver window size 'cat /proc/sys/net/ipv4/tcp_rmem'
+    cmd = f"cat /proc/sys/net/ipv4/{type}"
+    tcp_mem = run(cmd.split(), capture_output=True, text=True).stdout
+
+    # receiving data
+    log.debug(f"tcp_mem {type}: {tcp_mem}")
+
+    return float(tcp_mem.strip().split("\t")[-1])
+
+
+def bps_to_humanReadable(bps):
+
+    unit_suffix = {
+        3: {"divider": 1, "unit": ""},
+        6: {"divider": 1000, "unit": "k"},
+        9: {"divider": 1000000, "unit": "M"},
+        12: {"divider": 1000000000, "unit": "G"},
+    }
+
+    len_str_bps = len(str(int(bps)))
+    for length, suffix in unit_suffix.items():
+        if len_str_bps < length:
+            str_bps = str(round(bps / suffix["divider"], 2))
+            return f"{str_bps} {suffix['unit']}bps"
+
+
 def main(args):
     """main run
 
@@ -427,6 +461,40 @@ def main(args):
     cmds_args_expanded = expand_cmds_args(cmds_args)
     cmds_args_generated = generate_cmds_args(cmds_args_expanded)
     commands = generate_cmds("iperf3", cmds_args_generated)
+
+    if args.cmd == "bdp":
+        cmd = f"ping {args.host} -c 5 -i 0.2 -D"
+
+        measure_latency = run(cmd.split(), capture_output=True, text=True).stdout
+
+        latency_values = parse_ping_output(measure_latency)
+
+        log.debug(f"latency_values: {latency_values}")
+
+        max_mem = get_max_tcp_mem("tcp_wmem")
+        print(f"max_mem: {max_mem} bytes")
+
+        rtt_min = float(latency_values["stats"]["rtt_min"])
+        rtt_avg = float(latency_values["stats"]["rtt_avg"])
+
+        print(f"rtt_min: {rtt_min}ms")
+        print(f"rtt_avg: {rtt_avg}ms")
+
+        max_tput = bps_to_humanReadable(calculate_tput_BDP(max_mem, rtt_min))
+        print(f"max sending theoritical tput: {max_tput}")
+
+        max_tput = bps_to_humanReadable(calculate_tput_BDP(max_mem, rtt_avg))
+        print(f"avg sending theoritical tput: {max_tput}")
+
+        max_mem = get_max_tcp_mem("tcp_rmem")
+        print(f"max_mem: {max_mem} bytes")
+
+        max_tput = bps_to_humanReadable(calculate_tput_BDP(max_mem, rtt_min))
+        print(f"max receiving theoritical tput: {max_tput}")
+
+        max_tput = bps_to_humanReadable(calculate_tput_BDP(max_mem, rtt_avg))
+
+        print(f"avg receiving theoritical tput: {max_tput}")
 
     if args.cmd == "probe":
         if not args.no_probe and not args.dry_run:
@@ -461,27 +529,15 @@ def main(args):
 
                 print(f"mean_streams_rtt: {mean_streams_rtt}")
 
-                # current receiver window size 'cat /proc/sys/net/ipv4/tcp_rmem'
-                cmd = "cat /proc/sys/net/ipv4/tcp_rmem"
-                tcp_rmem = run(cmd.split(), capture_output=True, text=True).stdout
-                cmd = "cat /proc/sys/net/ipv4/tcp_wmem"
-                tcp_wmem = run(cmd.split(), capture_output=True, text=True).stdout
+                max_mem = get_max_tcp_mem("tcp_wmem")
 
-                # receiving data
-                print(f"tcp_rmem: {tcp_rmem}")
-
-                # sending data
-                print(f"tcp_wmem: {tcp_wmem}")
-
-                max_wmem = float(tcp_wmem.strip().split("\t")[-1])
-
-                max_tput = calculate_tput_BDP(max_wmem, mean_streams_rtt)
+                max_tput = calculate_tput_BDP(max_mem, mean_streams_rtt)
 
                 print(f"max sending theoritical tput: {max_tput}")
 
-                max_wmem = float(tcp_rmem.strip().split("\t")[-1])
+                max_mem = get_max_tcp_mem("tcp_rmem")
 
-                max_tput = calculate_tput_BDP(max_wmem, mean_streams_rtt)
+                max_tput = calculate_tput_BDP(max_mem, mean_streams_rtt)
 
                 print(f"max receiving theoritical tput: {max_tput}")
 

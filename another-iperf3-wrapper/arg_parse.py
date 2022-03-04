@@ -178,17 +178,24 @@ Wrapper to expand iperf3 capabilities
     )
 
     #
-    # bufferbloat test with 
+    # bufferbloat test with
     parser_bufferbloat = subparsers.add_parser(
         "bufferbloat",
         help="run iperf3 process to bufferbloat test\n ",
     )
 
     #
-    # bufferbloat test with 
+    # bufferbloat test with
     parser_probe = subparsers.add_parser(
         "probe",
         help="probe iperf3 server\n ",
+    )
+
+    #
+    # bufferbloat test with
+    parser_bdp = subparsers.add_parser(
+        "bdp",
+        help="calculate max tput\n ",
     )
 
     return parser.parse_args()
