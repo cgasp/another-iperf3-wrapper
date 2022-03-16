@@ -1,5 +1,7 @@
 import argparse
 
+obj = object()
+
 
 def arg_parse(config_default):
     text_description = """
@@ -71,15 +73,6 @@ Wrapper to expand iperf3 capabilities
         action="store_true",
         required=False,
         help="reverse",
-    )
-
-    parser.add_argument(
-        "--port-range",
-        dest="port_range",
-        action="store",
-        type=str,
-        required=False,
-        help="port range for probing",
     )
 
     parser.add_argument(
