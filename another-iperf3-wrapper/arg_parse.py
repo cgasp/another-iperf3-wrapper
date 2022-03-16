@@ -169,6 +169,13 @@ Wrapper to expand iperf3 capabilities
     )
 
     parser.add_argument(
+        "--quiet",
+        dest="quiet",
+        action="store_true",
+        help="no data displayed",
+    )
+
+    parser.add_argument(
         "--description",
         dest="description",
         action="store",

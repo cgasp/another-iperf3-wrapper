@@ -1,0 +1,173 @@
+[
+    {
+        "iPerf3 server": "iperf.par2.as49434.net",
+        "Localization": "Europe - France\nÎle-de-France",
+        "Data center": "DC Harmony Hosting",
+        "Hosting": "",
+        "Speed": "40 Gbit/s",
+        "Port": "9200-9240",
+        "IP version": "IPv4 and IPv6",
+        "Contact": "@g_marsot"
+    },
+    {
+        "iPerf3 server": [
+            "paris.testdebit.info",
+            "lille.testdebit.info",
+            "lyon.testdebit.info",
+            "aix-marseille.testdebit.info",
+            "bordeaux.testdebit.info"
+        ],
+        "Localization": "Europe - France Paris\nFrance Lille\nFrance Lyon\nFrance Aix-en-Provence\nFrance Bordeaux",
+        "Data center": "Data centers\nBouygues\nTelecom",
+        "Hosting": "",
+        "Speed": "10 Gbit/s\n10 Gbit/s\n10 Gbit/s\n10 Gbit/s\n10 Gbit/s",
+        "Port": "9200-9240",
+        "IP version": "IPv4 and IPv6",
+        "Contact": "@lafibreinfo"
+    },
+    {
+        "iPerf3 server": "speed.as208196.net",
+        "Localization": "Europe - France\nÎle-de-France",
+        "Data center": "Moji1\nNanterre",
+        "Hosting": "",
+        "Speed": "10 Gbit/s",
+        "Port": "5200-5209",
+        "IP version": "IPv4 or IPv6",
+        "Contact": "@DorianGaliana"
+    },
+    {
+        "iPerf3 server": [
+            "ping.online.net",
+            "ping6.online.net",
+            "ping-90ms.online.net",
+            "ping6-90ms.online.net"
+        ],
+        "Localization": "Europe - France\nÎle-de-France",
+        "Data center": "Scaleway\nVitry DC3",
+        "Hosting": "",
+        "Speed": "10 Gbit/s",
+        "Port": "5200-5209",
+        "IP version": "IPv4 or IPv6",
+        "Contact": "mikmak"
+    },
+    {
+        "iPerf3 server": "speedtest.serverius.net",
+        "Localization": "Europe - Netherlands",
+        "Data center": "Serverius\ndata center",
+        "Hosting": "",
+        "Speed": "10 Gbit/s",
+        "Port": "5002",
+        "IP version": "IPv4 and IPv6",
+        "Contact": "@serveriusbv"
+    },
+    {
+        "iPerf3 server": "nl.iperf.014.fr",
+        "Localization": "Europe - Netherlands",
+        "Data center": "NextGenWebs\ndata center",
+        "Hosting": "",
+        "Speed": "1 Gbit/s",
+        "Port": "10415-10420",
+        "IP version": "IPv4 only",
+        "Contact": "@014_fr"
+    },
+    {
+        "iPerf3 server": "ch.iperf.014.fr",
+        "Localization": "Europe - Switzerland\nZurich",
+        "Data center": "HostHatch\ndata center",
+        "Hosting": "",
+        "Speed": "3 Gbit/s",
+        "Port": "15315-15320",
+        "IP version": "IPv4 only",
+        "Contact": "@014_fr"
+    },
+    {
+        "iPerf3 server": "iperf.eenet.ee",
+        "Localization": "Europe - Estonia",
+        "Data center": "EENet Tartu",
+        "Hosting": "",
+        "Speed": "",
+        "Port": "5201",
+        "IP version": "IPv4 only",
+        "Contact": "@EENet_HITSA"
+    },
+    {
+        "iPerf3 server": "iperf.astra.in.ua",
+        "Localization": "Europe - Ukraine\nLviv",
+        "Data center": "Astra Lviv",
+        "Hosting": "",
+        "Speed": "10 Gbit/s",
+        "Port": "5201-5206",
+        "IP version": "IPv4 and IPv6",
+        "Contact": "noc@astra.in.ua"
+    },
+    {
+        "iPerf3 server": "iperf.volia.net",
+        "Localization": "Europe - Ukraine",
+        "Data center": "Volia Kiev",
+        "Hosting": "",
+        "Speed": "",
+        "Port": "5201",
+        "IP version": "IPv4 only",
+        "Contact": "@voliaofficial"
+    },
+    {
+        "iPerf3 server": "speedtest.uztelecom.uz",
+        "Localization": "Asia - Uzbekistan\nTashkent",
+        "Data center": "Infosystems",
+        "Hosting": "",
+        "Speed": "10 Gbit/s",
+        "Port": "5200-5209",
+        "IP version": "IPv4 and IPv6",
+        "Contact": "@KhurshidSuyunov"
+    },
+    {
+        "iPerf3 server": "iperf.it-north.net",
+        "Localization": "Asia - Kazakhstan",
+        "Data center": "Petropavl",
+        "Hosting": "",
+        "Speed": "1 Gbit/s",
+        "Port": "5200-5209",
+        "IP version": "IPv4 only",
+        "Contact": "Brauninger A.F."
+    },
+    {
+        "iPerf3 server": "iperf.biznetnetworks.com",
+        "Localization": "Indonesia",
+        "Data center": "Asia - Biznet - Midplaza\nCimanggis",
+        "Hosting": "",
+        "Speed": "1 Gbit/s",
+        "Port": "5201 TCP\nto\n5203 TCP",
+        "IP version": "IPv4 and IPv6",
+        "Contact": "Biznet Networks"
+    },
+    {
+        "iPerf3 server": "speedtest-iperf-akl.vetta.online",
+        "Localization": "Oceania - New Zealand\nAuckland",
+        "Data center": "Vetta Online\nAuckland",
+        "Hosting": "",
+        "Speed": "10 Gbit/s",
+        "Port": "5200 TCP\nto 5209 TCP",
+        "IP version": "IPv4 only",
+        "Contact": "contact"
+    },
+    {
+        "iPerf3 server": "iperf.scottlinux.com",
+        "Localization": "Oceania - USA\nCalifornia",
+        "Data center": "Hurricane\nFremont 2",
+        "Hosting": "",
+        "Speed": "1 Gbit/s",
+        "Port": "5201",
+        "IP version": "IPv4 and IPv6",
+        "Contact": "@scottlinux"
+    },
+    {
+        "iPerf3 server": "iperf.he.net",
+        "Localization": "Oceania - USA\nCalifornia",
+        "Data center": "Hurricane\nFremont 1",
+        "Hosting": "",
+        "Speed": "",
+        "Port": "5201",
+        "IP version": "IPv4 and IPv6",
+        "Contact": "HE forums"
+    }
+]

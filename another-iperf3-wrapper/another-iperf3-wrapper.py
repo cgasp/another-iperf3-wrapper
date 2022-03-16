@@ -22,6 +22,8 @@ import time
 from subprocess import Popen, PIPE, check_output, run
 
 from rich import print
+from rich.panel import Panel
+
 
 # get main logger
 log = logging.getLogger("another-iperf3-wrapper")
@@ -102,7 +104,7 @@ def probe_iperf3(host, ports_list, required_ports=2):
     Returns:
         list: available port for running iperf3
     """
-    log.info(
+    log.debug(
         f"start probing for available iperf3 ports - port range: {ports_list[0]} - {ports_list[-1]} | amount of required ports: {required_ports}"
     )
     available_ports = []
@@ -120,7 +122,7 @@ def probe_iperf3(host, ports_list, required_ports=2):
     if len(available_ports) < required_ports:
         log.warning("not enough ports to run tests")
         exit(1)
-    log.info(
+    log.debug(
         f"probe finished - following port available to be used => {available_ports}"
     )
     return available_ports
@@ -220,10 +222,10 @@ def run_commands(commands):
     output = {}
     if not args.dry_run:
         for cmd, sleep_time in commands.items():
-            log.info(f"Execute cmd: '{cmd}' in a new process")
+            log.debug(f"Execute cmd: '{cmd}' in a new process")
             processes[cmd] = Popen(cmd.split(), stdout=PIPE, universal_newlines=True)
             time.sleep(sleep_time)
-        log.info("processes check start")
+        log.debug("processes check start")
         for t in range(1, args.timeout):
             for cmd, process in processes.items():
                 log.debug(f"process pid: {process.pid} cmd: {cmd}")
@@ -244,7 +246,7 @@ def run_commands(commands):
             if not processes:
                 break
             time.sleep(1)
-        log.info("processes finished")
+        log.debug("processes finished")
 
     else:
         # dry-run mode - load output from file
@@ -391,8 +393,8 @@ def calculate_tput_BDP(buffer_size, latency):
     """return max throughtput achievable with given buffer size and latency
 
     Args:
-        buffer_size ([type]): in bytes
-        latency ([type]): in ms
+        buffer_size (int): in bytes
+        latency (int): in ms
     """
 
     buffer_size_bits = buffer_size * 8
@@ -401,13 +403,24 @@ def calculate_tput_BDP(buffer_size, latency):
     return buffer_size_bits / latency_sec
 
 
-def get_max_tcp_mem(type):
-    """[summary]
+def calculate_mem_BDP(latency, bps=1e9):
+    """return needed memory setting to reach target throughput with given latency
 
     Args:
-        type ([type]): tcp_wmem or tcp_rmem
+        buffer_size (int): in bytes
+        latency (int): in ms
     """
-    # current receiver window size 'cat /proc/sys/net/ipv4/tcp_rmem'
+    latency_sec = latency * pow(10, -3)
+
+    return bps * latency_sec
+
+
+def get_max_tcp_mem(type):
+    """get max configured tcp mem
+
+    Args:
+        type (str): tcp_wmem or tcp_rmem
+    """
     cmd = f"cat /proc/sys/net/ipv4/{type}"
     tcp_mem = run(cmd.split(), capture_output=True, text=True).stdout
 
@@ -417,20 +430,55 @@ def get_max_tcp_mem(type):
     return float(tcp_mem.strip().split("\t")[-1])
 
 
-def bps_to_humanReadable(bps):
+def units_to_humanReadable(bps):
+    """convert units to suitable human readable unit
+
+    Args:
+        bps (int): bits per second
+
+    Returns:
+        str: human readable bps
+    """
 
     unit_suffix = {
-        3: {"divider": 1, "unit": ""},
-        6: {"divider": 1000, "unit": "k"},
-        9: {"divider": 1000000, "unit": "M"},
-        12: {"divider": 1000000000, "unit": "G"},
+        4: {"divider": 1, "unit": ""},
+        7: {"divider": 1000, "unit": "k"},
+        10: {"divider": 1000000, "unit": "M"},
+        13: {"divider": 1000000000, "unit": "G"},
     }
 
     len_str_bps = len(str(int(bps)))
     for length, suffix in unit_suffix.items():
         if len_str_bps < length:
             str_bps = str(round(bps / suffix["divider"], 2))
-            return f"{str_bps} {suffix['unit']}bps"
+            return f"{str_bps} {suffix['unit']}"
+
+
+def bufferbloat_grade(effective_latency_inc):
+    """return grade from given effective_latency_inc
+    # source: http://www.dslreports.com/faq/17930
+
+    Args:
+        effective_latency_inc (str): grade with description
+    """
+
+    # default result
+    grade = "F - 400 ms or greater latency increase"
+
+    grades = {
+        5: "A+ - Less than 5 ms latency increase",
+        30: "A - Less than 30 ms latency increase",
+        60: "B - Less than 60 ms latency increase",
+        200: "C - Less than 200 ms latency increase",
+        400: "D - Less than 400 ms latency increase",
+    }
+
+    for latency_grade, g in grades.items():
+        if effective_latency_inc < latency_grade:
+            grade = g
+            break
+
+    return grade
 
 
 def main(args):
@@ -439,6 +487,10 @@ def main(args):
     Args:
         args (obj): main program obj
     """
+
+    if not args.host:
+        log.error("No valid host, please set a host with argument '-c'  \nexit")
+        exit(0)
 
     runtest_time = get_timestamp_now()
 
@@ -471,32 +523,58 @@ def main(args):
 
         log.debug(f"latency_values: {latency_values}")
 
-        max_mem = get_max_tcp_mem("tcp_wmem")
-        print(f"max_mem: {max_mem} bytes")
+        print(
+            Panel.fit("BDP (Bandwidth-delay Product) calculation", border_style="white")
+        )
+        print(f"host: {args.host}")
+        print(f"\n# Latency")
 
         rtt_min = float(latency_values["stats"]["rtt_min"])
         rtt_avg = float(latency_values["stats"]["rtt_avg"])
 
-        print(f"rtt_min: {rtt_min}ms")
-        print(f"rtt_avg: {rtt_avg}ms")
+        print(f"rtt_min: {round(rtt_min,2)}ms")
+        print(f"rtt_avg: {round(rtt_avg,2)}ms")
 
-        max_tput = bps_to_humanReadable(calculate_tput_BDP(max_mem, rtt_min))
-        print(f"max sending theoritical tput: {max_tput}")
+        print(f"\n# Sending (Upload)")
 
-        max_tput = bps_to_humanReadable(calculate_tput_BDP(max_mem, rtt_avg))
-        print(f"avg sending theoritical tput: {max_tput}")
+        max_mem = get_max_tcp_mem("tcp_wmem")
+        print(f"max_wmem: {units_to_humanReadable(max_mem)}bytes")
+
+        max_tput = units_to_humanReadable(calculate_tput_BDP(max_mem, rtt_min))
+        print(f"max sending theoritical throughput: {max_tput}bps")
+
+        max_tput = units_to_humanReadable(calculate_tput_BDP(max_mem, rtt_avg))
+        print(f"avg sending theoritical throughput: {max_tput}bps")
+
+        print(f"\n# Receiving (Download)")
 
         max_mem = get_max_tcp_mem("tcp_rmem")
-        print(f"max_mem: {max_mem} bytes")
+        print(f"max_rmem: {units_to_humanReadable(max_mem)}bytes")
 
-        max_tput = bps_to_humanReadable(calculate_tput_BDP(max_mem, rtt_min))
-        print(f"max receiving theoritical tput: {max_tput}")
+        max_tput = units_to_humanReadable(calculate_tput_BDP(max_mem, rtt_min))
+        print(f"max receiving theoritical throughput: {max_tput}bps")
 
-        max_tput = bps_to_humanReadable(calculate_tput_BDP(max_mem, rtt_avg))
+        max_tput = units_to_humanReadable(calculate_tput_BDP(max_mem, rtt_avg))
+        print(f"avg receiving theoritical throughput: {max_tput}bps")
 
-        print(f"avg receiving theoritical tput: {max_tput}")
+        print(f"\n# BDP")
 
-    if args.cmd == "probe":
+        print(
+            f"required tcp buffer to reach 10Gbps with RTT of {rtt_min}ms: {units_to_humanReadable(calculate_mem_BDP(rtt_min,1e9))}bytes"
+        )
+        print(
+            f"required tcp buffer to reach 10Gbps with RTT of {rtt_avg}ms: {units_to_humanReadable(calculate_mem_BDP(rtt_avg,1e9))}bytes"
+        )
+
+    if args.cmd == "probe" and args.host:
+        print(
+            Panel.fit(
+                "Probe iperf3 server, available port and estimate maximum performance base on RTT and Memory configured",
+                border_style="white",
+            )
+        )
+        print(f"host: {args.host}")
+
         if not args.no_probe and not args.dry_run:
             free_ports = probe_iperf3(args.host, port_list, required_ports=1)
 
@@ -527,25 +605,37 @@ def main(args):
 
                 mean_streams_rtt = statistics.mean(streams_rtt)
 
-                print(f"mean_streams_rtt: {mean_streams_rtt}")
+                print(f"Avg streams rtt: {round(mean_streams_rtt,2)}ms")
+
+                print(f"\n# Sending (Upload)")
 
                 max_mem = get_max_tcp_mem("tcp_wmem")
+                print(f"max_wmem: {units_to_humanReadable(max_mem)}bytes")
 
-                max_tput = calculate_tput_BDP(max_mem, mean_streams_rtt)
+                max_tput = units_to_humanReadable(
+                    calculate_tput_BDP(max_mem, mean_streams_rtt)
+                )
 
-                print(f"max sending theoritical tput: {max_tput}")
+                print(f"max sending theoritical throughput: {max_tput}bps")
+
+                print(f"\n# Receiving (Download)")
+
+                max_mem = get_max_tcp_mem("tcp_rmem")
+                print(f"max_rmem: {units_to_humanReadable(max_mem)}bytes")
 
                 max_mem = get_max_tcp_mem("tcp_rmem")
 
-                max_tput = calculate_tput_BDP(max_mem, mean_streams_rtt)
+                max_tput = units_to_humanReadable(
+                    calculate_tput_BDP(max_mem, mean_streams_rtt)
+                )
 
-                print(f"max receiving theoritical tput: {max_tput}")
+                print(f"max receiving theoritical throughput: {max_tput}bps")
 
                 # print(output)
 
-        output_commands["iperf3 -c 62.202.138.238 -p 5003 -t 5 -P 1 -J "][
-            "output_parsed"
-        ]["intervals"][4]["streams"][0]["rtt"]
+        # output_commands["iperf3 -c 62.202.138.238 -p 5003 -t 5 -P 1 -J "][
+        #     "output_parsed"
+        # ]["intervals"][4]["streams"][0]["rtt"]
 
     if args.cmd == "bufferbloat":
 
@@ -704,6 +794,9 @@ def main(args):
         relevant_keys.remove("timestamp")
         relevant_keys.insert(0, "timestamp")
 
+        log.debug(summary_stats)
+        log.debug(csv_content)
+
         if args.csv:
             # intervals-stats
             fn = f"{args.result_dst_path}bb-test_intervals-stats_{args.description}{runtest_time}.csv"
@@ -713,17 +806,43 @@ def main(args):
             fn = f"{args.result_dst_path}bb-test_summary-stats_{args.description}{runtest_time}.csv"
             save_CSV(fn, list(summary_stats.keys()), [summary_stats])
 
+        print_summary_stats = (
+            f"  runtime: {summary_stats['timestamp']}\n"
+            f"  download: {units_to_humanReadable(summary_stats['iperf3_DS_bits_per_second'])}bps\n"
+            f"  upload: {units_to_humanReadable(summary_stats['iperf3_US_bits_per_second'])}bps\n"
+            f"  ICMP packets TX: {summary_stats['imcp_pckts_tx']}\n"
+            f"  ICMP packets RX: {summary_stats['imcp_pckts_rx']}\n"
+            f"  ICMP packets loss: {summary_stats['imcp_pckts_loss_perc']}\n"
+            f"  ICMP RTT min: {summary_stats['imcp_rtt_min']}\n"
+            f"  ICMP RTT avg: {summary_stats['imcp_rtt_avg']}\n"
+            f"  ICMP RTT max: {summary_stats['imcp_rtt_max']}\n"
+            f"  ICMP RTT mdev: {summary_stats['imcp_rtt_mdev']}\n"
+        )
+        if log.level in (10, 20):
+            effective_latency_inc = float(summary_stats["imcp_rtt_max"]) - float(
+                summary_stats["imcp_rtt_min"]
+            )
+            print(f"summary_stats:\n{print_summary_stats}")
+
+            print(
+                f"bufferbloat grade: {bufferbloat_grade(round(effective_latency_inc, 2))}"
+            )
+
 
 if __name__ == "__main__":
 
-    config_file = "~/.config/another-iperf3-wrapper/another-iperf3-wrapper.json"
+    config = {}
+    try:
+        config_file = "~/.config/another-iperf3-wrapper/another-iperf3-wrapper.json"
 
-    expanded_config_file = os.path.expanduser(config_file)
+        expanded_config_file = os.path.expanduser(config_file)
 
-    with open(expanded_config_file, "r") as f:
-        config = json.load(f)
+        with open(expanded_config_file, "r") as f:
+            config = json.load(f)
+    except FileNotFoundError:
+        print(f"FileNotFoundError: could not load config file: {config_file}")
 
-    args = arg_parse.arg_parse(config["default"])
+    args = arg_parse.arg_parse(config.get("default", {}))
 
     # setup for logging
     if args.no_logging:
