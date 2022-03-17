@@ -235,9 +235,13 @@ def main():
 
         output_commands = common.parse_output_commands(output_commands)
 
-        print(output_commands)
+        print(output_commands) if log.level in (10, 20) else None
 
-        common.parse_iperf3_intervals(output_commands)
+        parsed_data = common.parse_iperf3_intervals(output_commands)
+
+        for k, v in parsed_data.items():
+            fn = f"{args.obj.result_dst_path}{common.get_str_cmd(cmd)}_{k}_{common.get_timestamp_now()}.csv"
+            common.save_CSV(fn, v[0].keys(), v)
 
 
 if __name__ == "__main__":

@@ -237,6 +237,10 @@ def fill_dict(keys, dict):
     return d
 
 
+def get_str_cmd(cmd):
+    return cmd.replace("-", "_").replace(" ", "")
+
+
 def save_CSV(dst_filename, header, csv_content):
     """save into CSV file
 
@@ -320,6 +324,7 @@ def get_max_tcp_mem(type):
 def parse_iperf3_intervals(output_commands):
     interval_stats = {}
     intervals_streams_stats = []
+    intervals_sum_stats = []
     for cmd, values in output_commands.items():
         test_error = values["output_parsed"].get("error", False)
     if test_error:
@@ -336,17 +341,20 @@ def parse_iperf3_intervals(output_commands):
             for interval in values["output_parsed"]["intervals"]:
                 timestamp = start_ts + int(round(interval["sum"]["start"], 0))
 
+                # interval stream stats
                 for stream in interval["streams"]:
                     interval_stream_stats = {"timestamp": timestamp}
                     interval_stream_stats.update(stream)
 
                     intervals_streams_stats.append(interval_stream_stats)
-            print(intervals_streams_stats)
 
-            """
-            if not interval_stats.get(timestamp, False):
-                interval_stats[timestamp] = {}
+                # interval sum stats
+                interval_sum_stats = {"timestamp": timestamp}
+                interval_sum_stats.update(interval["sum"])
+                
+                intervals_sum_stats.append(interval_sum_stats)
 
-            for k, v in interval["sum"].items():
-                interval_stats[timestamp][f"iperf3_{header_prefix}_{k}"] = v
-            """
+    return {
+        "intervals_streams_stats": intervals_streams_stats,
+        "intervals_sum_stats": intervals_sum_stats,
+    }
