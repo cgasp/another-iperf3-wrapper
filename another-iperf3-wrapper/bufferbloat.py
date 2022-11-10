@@ -1,6 +1,7 @@
 import logging
 import json
 import re
+import datetime
 
 import args
 import common
@@ -91,9 +92,11 @@ def bufferbloat_run():
     #
 
     # Aggregate data
+    interval_sum_stats = {}
     interval_stats = {}
 
     summary_stats = {"timestamp": runtest_time}
+
 
     for cmd, values in output_commands.items():
         test_error = values["output_parsed"].get("error", False)
@@ -104,79 +107,43 @@ def bufferbloat_run():
                 for pckts_stats in values["output_parsed"]["pckts_stats"]:
                     rounded_timestamp = int(round(float(pckts_stats["unix_time"]), 0))
 
-                    if not interval_stats.get(rounded_timestamp, False):
-                        interval_stats[rounded_timestamp] = {}
+                    if not interval_sum_stats.get(rounded_timestamp, False):
+                        interval_sum_stats[rounded_timestamp] = {}
 
-                    interval_stats[rounded_timestamp].update(pckts_stats)
+                    interval_sum_stats[rounded_timestamp].update(pckts_stats)
 
                 for stat_name, stat_value in values["output_parsed"]["stats"].items():
                     summary_stats[f"imcp_{stat_name}"] = stat_value
 
             if values["type"] == "iperf3":
-                header_prefix = (
-                    "DS"
+
+                stream_direction = (
+                    "downstream"
                     if values["output_parsed"]["start"]["test_start"]["reverse"] == 1
-                    else "US"
+                    else "upstream"
                 )
 
-                start_ts = values["output_parsed"]["start"]["timestamp"]["timesecs"]
-                for interval in values["output_parsed"]["intervals"]:
-                    timestamp = start_ts + int(round(interval["sum"]["start"], 0))
+                interval_stats = common.set_iperf3_results_by_timestamp(
+                    interval_stats, stream_direction, values["output_parsed"]
+                )
 
-                    if not interval_stats.get(timestamp, False):
-                        interval_stats[timestamp] = {}
-
-                    for k, v in interval["sum"].items():
-                        interval_stats[timestamp][f"iperf3_{header_prefix}_{k}"] = v
-
-                summary_stats[f"iperf3_{header_prefix}_bits_per_second"] = int(
+                summary_stats[f"{stream_direction}_bits_per_second"] = int(
                     values["output_parsed"]["end"]["sum_received"]["bits_per_second"]
                 )
 
+    common.save_iperf3_interval_results_into_CSV(interval_stats)
+
     summary_stats["description"] = args.obj.description
 
-    # Save data into CSV
-    keys_sorted = list(sorted(interval_stats.keys()))
-
-    relevant_keys = set(
-        [
-            "timestamp",
-            "iperf3_DS_bits_per_second",
-            "iperf3_US_bits_per_second",
-            "icmp_time",
-        ]
-    )
-    csv_content = []
-    # header = set()
-    for k in keys_sorted:
-        interval_stats_datapoint = interval_stats[k]
-        # print(f"{k}: {interval_stats_datapoint}")
-        csv_content_line = {"timestamp": k}
-        csv_content_line.update(interval_stats_datapoint)
-        # header.update(list(csv_content_line.keys()))
-        csv_content_line = common.fill_dict(relevant_keys, csv_content_line)
-        csv_content.append(csv_content_line)
-
-    relevant_keys = sorted(list(relevant_keys))
-    relevant_keys.remove("timestamp")
-    relevant_keys.insert(0, "timestamp")
-
-    log.debug(summary_stats)
-    log.debug(csv_content)
-
     if args.obj.csv:
-        # intervals-stats
-        fn = f"{args.obj.result_dst_path}bb-test_intervals-stats_{args.obj.description}{runtest_time}.csv"
-        common.save_CSV(fn, relevant_keys, csv_content)
-
         # summary-stats
         fn = f"{args.obj.result_dst_path}bb-test_summary-stats_{args.obj.description}{runtest_time}.csv"
         common.save_CSV(fn, list(summary_stats.keys()), [summary_stats])
 
     print_summary_stats = (
         f"  runtime: {summary_stats['timestamp']}\n"
-        f"  download: {common.units_to_humanReadable(summary_stats['iperf3_DS_bits_per_second'])}bps\n"
-        f"  upload: {common.units_to_humanReadable(summary_stats['iperf3_US_bits_per_second'])}bps\n"
+        f"  download: {common.units_to_humanReadable(summary_stats['downstream_bits_per_second'])}bps\n"
+        f"  upload: {common.units_to_humanReadable(summary_stats['upstream_bits_per_second'])}bps\n"
         f"  ICMP packets TX: {summary_stats['imcp_pckts_tx']}\n"
         f"  ICMP packets RX: {summary_stats['imcp_pckts_rx']}\n"
         f"  ICMP packets loss: {summary_stats['imcp_pckts_loss_perc']}\n"

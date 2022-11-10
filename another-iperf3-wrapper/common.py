@@ -4,6 +4,7 @@ import re
 import csv
 import time
 import json
+import collections
 
 from subprocess import Popen, PIPE, check_output, run
 
@@ -321,7 +322,36 @@ def get_max_tcp_mem(type):
     return float(tcp_mem.strip().split("\t")[-1])
 
 
+def flatten(d, parent_key="", sep="_"):
+    """Recursively transform a dict in a flatten dict of values
+
+    Args:
+        d (dict): dictionary to flatten
+        parent_key (str, optional). Defaults to "".
+        sep (str, optional): separator between keys. Defaults to "_".
+
+    Returns:
+        dict: flatten dict [description]
+    """
+    items = []
+    for k, v in d.items():
+        new_key = parent_key + sep + k if parent_key else k
+        if isinstance(v, collections.MutableMapping):
+            items.extend(flatten(v, new_key, sep=sep).items())
+        else:
+            items.append((new_key, v))
+    return dict(items)
+
+
 def parse_iperf3_intervals(output_commands):
+    """parse intervals in iperf3 output to save later in CSV
+
+    Args:
+        output_commands (dict): iperf3 output
+
+    Returns:
+        dict: with intervals_streams_stats and intervals_sum_stats
+    """
     intervals_streams_stats = []
     intervals_sum_stats = []
     for cmd, values in output_commands.items():
@@ -338,7 +368,8 @@ def parse_iperf3_intervals(output_commands):
 
             start_ts = values["output_parsed"]["start"]["timestamp"]["timesecs"]
             for interval in values["output_parsed"]["intervals"]:
-                timestamp = start_ts + int(round(interval["sum"]["start"], 0))
+                epochtime = start_ts + int(round(interval["sum"]["start"], 0))
+                timestamp = datetime.datetime.fromtimestamp(epochtime)
 
                 # interval stream stats
                 for stream in interval["streams"]:
@@ -350,10 +381,109 @@ def parse_iperf3_intervals(output_commands):
                 # interval sum stats
                 interval_sum_stats = {"timestamp": timestamp}
                 interval_sum_stats.update(interval["sum"])
-                
+
                 intervals_sum_stats.append(interval_sum_stats)
 
     return {
         "intervals_streams_stats": intervals_streams_stats,
         "intervals_sum_stats": intervals_sum_stats,
     }
+
+
+def convert_streams_list_to_dict(interval_stats):
+    """convert list of stream in iperf3 output to dict with socket as key
+
+    Args:
+        interval_stats (dict): stats from interval
+
+    Returns:
+        dict: stats from interval with stream with new format
+    """
+
+    for timestamp, stats_per_ts in interval_stats.items():
+        for stream_type, stream_type_stats in stats_per_ts["streams"].items():
+            streams_dict = {}
+            for stream in stream_type_stats:
+                streams_dict[str(stream["socket"])] = stream
+
+            interval_stats[timestamp]["streams"][stream_type] = streams_dict
+
+    return interval_stats
+
+
+def set_iperf3_results_by_timestamp(interval_stats, stream_direction, output_parsed):
+    """reorganize iperf3 results by timestamp
+
+    Args:
+        interval_stats (dict): stats from interval
+        stream_direction (str): stream direction
+        output_parsed (dict): iperf3 output parsed
+
+    Returns:
+        dict: stats from interval
+    """
+
+    start_ts = output_parsed["start"]["timestamp"]["timesecs"]
+
+    stats_type = ["sum", "streams"]
+
+    for interval in output_parsed["intervals"]:
+        timestamp = start_ts + int(round(interval["sum"]["start"], 0))
+
+        for stat_type in stats_type:
+
+            if not interval_stats.get(timestamp, False):
+                interval_stats[timestamp] = {}
+
+            if not interval_stats[timestamp].get(stat_type, False):
+                interval_stats[timestamp][stat_type] = {}
+
+            if not interval_stats[timestamp][stat_type].get(stream_direction, False):
+                interval_stats[timestamp][stat_type][stream_direction] = {}
+
+            interval_stats[timestamp][stat_type][stream_direction] = interval[stat_type]
+
+    return interval_stats
+
+
+def save_iperf3_interval_results_into_CSV(interval_stats):
+    """save iperf3 interval results into CSV
+
+    Args:
+        interval_stats (dict): stats from interval
+    """
+
+    interval_stats = convert_streams_list_to_dict(interval_stats)
+
+    # Prepare data to save in CSV
+    timestamps_sorted = list(sorted(interval_stats.keys()))
+
+    CSV_content = []
+    for timestamp in timestamps_sorted:
+        CSV_line = {
+            "timestamp": datetime.datetime.fromtimestamp(timestamp).strftime(
+                "%Y-%m-%d %H:%M:%S"
+            )
+        }
+        flatten_data = flatten(interval_stats[timestamp], "", ".")
+        CSV_line.update(flatten_data)
+        CSV_content.append(CSV_line)
+
+    header = [key for dict in CSV_content for key in dict]
+    header = sorted(set(header))
+    header.remove("timestamp")
+    header.insert(0, "timestamp")
+
+    # for sum data to be on first column
+    for h in header:
+        if "sum" in h:
+            header.remove(h)
+            header.insert(1, h)
+
+    if args.obj.csv:
+
+        runtest_time = get_timestamp_now()
+
+        # intervals-stats
+        fn = f"{args.obj.result_dst_path}bb-test_intervals-stats_{args.obj.description}{runtest_time}.csv"
+        save_CSV(fn, header, CSV_content)

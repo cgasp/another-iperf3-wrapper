@@ -83,9 +83,3 @@ def probe_run():
             )
 
             print(f"max receiving theoritical throughput: {max_tput}bps")
-
-            # print(output)
-
-    # output_commands["iperf3 -c 62.202.138.238 -p 5003 -t 5 -P 1 -J "][
-    #     "output_parsed"
-    # ]["intervals"][4]["streams"][0]["rtt"]
