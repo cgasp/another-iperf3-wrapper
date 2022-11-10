@@ -66,7 +66,8 @@ def generate_cmds(base_cmd, cmds_args):
         cmd = base_cmd
         for arg in cmd_args:
             cmd += f" {arg}"
-            cmd.strip()
+        # remove duplicate whitespaces and remove trailing space
+        cmd = re.sub(r"\s+", r" ", cmd).strip()
         cmds.append(cmd)
     return cmds
 
@@ -200,6 +201,16 @@ def main():
     if args.obj.reverse:
         cmds_args["-R"] = ""
 
+    if args.obj.udp:
+        cmds_args["-u"] = ""
+
+    if args.obj.bitrate:
+        cmds_args["-b"] = args.obj.bitrate
+
+    if args.obj.iperf3_args:
+        iperf3_args = str(args.obj.iperf3_args).replace("\\", "")
+        cmds_args[iperf3_args] = ""
+
     cmds_args_expanded = expand_cmds_args(cmds_args)
     cmds_args_generated = generate_cmds_args(cmds_args_expanded)
     common.data["commands"] = generate_cmds("iperf3", cmds_args_generated)
@@ -246,6 +257,7 @@ def main():
 
 if __name__ == "__main__":
 
+    configFileNotFoundError = False
     config = {}
     try:
         config_file = "~/.config/another-iperf3-wrapper/another-iperf3-wrapper.json"
@@ -255,7 +267,7 @@ if __name__ == "__main__":
         with open(expanded_config_file, "r") as f:
             config = json.load(f)
     except FileNotFoundError:
-        print(f"FileNotFoundError: could not load config file: {config_file}")
+        configFileNotFoundError = True
 
     args.obj = args.arg_parse(config.get("default", {}))
     # args_dict = vars(common.args)
@@ -276,6 +288,10 @@ if __name__ == "__main__":
     log = logging.getLogger("another-iperf3-wrapper")
 
     log.debug(f"args: \n{args.obj}")
-    log.debug(f"config: \n{config}")
+
+    if configFileNotFoundError:
+        log.debug(f"FileNotFoundError: could not load config file: {config_file}")
+    else:
+        log.debug(f"config: \n{config}")
 
     main()

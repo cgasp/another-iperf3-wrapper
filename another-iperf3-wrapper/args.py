@@ -10,10 +10,10 @@ Wrapper to expand iperf3 capabilities
 # Main features
    - expand iperf3 command 
    - run iperf3 command 
-   - probe open port before running (soon)
-   - parse output to CSV (streams or summary) (soon)
+   - probe open port before running
+   - parse output to CSV (streams or summary)
+   - bufferbloat evaluation
    - run set of predefine command in file (soon)
-   - bufferbloat evaluation (soon) 
    - generate graphs with results (soon)
 """
 
@@ -73,6 +73,43 @@ Wrapper to expand iperf3 capabilities
         action="store_true",
         required=False,
         help="reverse",
+    )
+
+    parser.add_argument(
+        "-u",
+        "--udp",
+        dest="udp",
+        action="store_true",
+        required=False,
+        help="use UDP",
+    )
+
+    parser.add_argument(
+        "-b",
+        "--bitrate",
+        dest="bitrate",
+        action="store",
+        default=config_default.get("bitrate", False),
+        required=False,
+        help=(
+            "target bitrate in bits/sec (0 for unlimited)"
+            "(default 1 Mbit/sec for UDP, unlimited for TCP)"
+            "(optional slash and packet count for burst mode)"
+        ),
+    )
+
+    parser.add_argument(
+        "-A",
+        "--iperf3-args",
+        dest="iperf3_args",
+        action="store",
+        type=str,
+        # default=config_default.get("iperf3_args", False),
+        required=False,
+        help=(
+            "user set additional iperf3 argument to use on wrapper"
+            "/!\ escape - character => \-b 10M"
+        ),
     )
 
     parser.add_argument(
@@ -192,7 +229,7 @@ Wrapper to expand iperf3 capabilities
     )
 
     #
-    # bufferbloat test with
+    # perform BDP calculation 
     parser_bdp = subparsers.add_parser(
         "bdp",
         help="calculate max tput\n ",

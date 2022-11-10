@@ -322,7 +322,6 @@ def get_max_tcp_mem(type):
 
 
 def parse_iperf3_intervals(output_commands):
-    interval_stats = {}
     intervals_streams_stats = []
     intervals_sum_stats = []
     for cmd, values in output_commands.items():
