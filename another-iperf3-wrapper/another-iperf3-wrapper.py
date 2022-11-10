@@ -254,9 +254,6 @@ def main():
             fn = f"{args.obj.result_dst_path}{common.get_str_cmd(cmd)}_{k}_{common.get_timestamp_now()}.csv"
             common.save_CSV(fn, v[0].keys(), v)
 
-        for cmd, values in output_commands.items():
-            
-
 
 if __name__ == "__main__":
 
