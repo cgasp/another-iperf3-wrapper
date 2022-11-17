@@ -97,7 +97,6 @@ def bufferbloat_run():
 
     summary_stats = {"timestamp": runtest_time}
 
-
     for cmd, values in output_commands.items():
         test_error = values["output_parsed"].get("error", False)
         if test_error:
@@ -107,10 +106,14 @@ def bufferbloat_run():
                 for pckts_stats in values["output_parsed"]["pckts_stats"]:
                     rounded_timestamp = int(round(float(pckts_stats["unix_time"]), 0))
 
-                    if not interval_sum_stats.get(rounded_timestamp, False):
-                        interval_sum_stats[rounded_timestamp] = {}
+                    if not interval_stats.get(rounded_timestamp, False):
+                        # if the timestamp doesn't exist
+                        interval_stats[rounded_timestamp] = {"ping": {}}
+                    elif not interval_stats[rounded_timestamp].get("ping", False):
+                        # if there is no ping data
+                        interval_stats[rounded_timestamp]["ping"] = {}
 
-                    interval_sum_stats[rounded_timestamp].update(pckts_stats)
+                    interval_stats[rounded_timestamp]["ping"].update(pckts_stats)
 
                 for stat_name, stat_value in values["output_parsed"]["stats"].items():
                     summary_stats[f"imcp_{stat_name}"] = stat_value

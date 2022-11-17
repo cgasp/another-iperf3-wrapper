@@ -166,7 +166,7 @@ Wrapper to expand iperf3 capabilities
         dest="result_dst_path",
         action="store",
         type=str,
-        default=config_default.get("result_dst_path", ""),
+        default=config_default.get("result_dst_path", "~/"),
         help="result_dst_path to save results",
     )
 
@@ -229,7 +229,7 @@ Wrapper to expand iperf3 capabilities
     )
 
     #
-    # perform BDP calculation 
+    # perform BDP calculation
     parser_bdp = subparsers.add_parser(
         "bdp",
         help="calculate max tput\n ",

@@ -391,7 +391,7 @@ def parse_iperf3_intervals(output_commands):
 
 
 def convert_streams_list_to_dict(interval_stats):
-    """convert list of stream in iperf3 output to dict with socket as key
+    """convert list of stream in iperf3 output to dict
 
     Args:
         interval_stats (dict): stats from interval
@@ -401,13 +401,13 @@ def convert_streams_list_to_dict(interval_stats):
     """
 
     for timestamp, stats_per_ts in interval_stats.items():
-        for stream_type, stream_type_stats in stats_per_ts["streams"].items():
-            streams_dict = {}
-            for stream in stream_type_stats:
-                streams_dict[str(stream["socket"])] = stream
+        if stats_per_ts.get("streams", False):
+            for stream_type, stream_type_stats in stats_per_ts["streams"].items():
+                streams_dict = {}
+                for id, stream in enumerate(stream_type_stats):
+                    streams_dict[str(id)] = stream
 
-            interval_stats[timestamp]["streams"][stream_type] = streams_dict
-
+                interval_stats[timestamp]["streams"][stream_type] = streams_dict
     return interval_stats
 
 
