@@ -3,8 +3,8 @@ import json
 import re
 import datetime
 
-import args
-import common
+from utils import args, common, run_commands, output_operations
+from modules import run_iperf
 
 log = logging.getLogger("another-iperf3-wrapper")
 
@@ -38,8 +38,6 @@ def bufferbloat_grade(effective_latency_inc):
 
 def bufferbloat_run():
 
-    runtest_time = common.get_timestamp_now()
-
     if len(common.data["port_list"]) == 1:
         common.data["port_list"][1] = common.data["port_list"][0] + 1
         log.warn(
@@ -56,7 +54,7 @@ def bufferbloat_run():
     bufferbloat_iperf3_commands = [cmd_iperf3_ds, cmd_iperf3_us]
 
     if not args.obj.no_probe and not args.obj.dry_run:
-        free_ports = common.probe_iperf3(
+        free_ports = run_commands.probe_iperf3(
             args.obj.host, common.data["port_list"], required_ports=2
         )
 
@@ -77,6 +75,8 @@ def bufferbloat_run():
     for cmd in scenario_cmds.keys():
         log.info(f"commands: {cmd}")
 
+    interval_stats, summary_stats = run_iperf.run(scenario_cmds)
+    """ 
     output_commands = common.run_commands(scenario_cmds)
 
     output_commands = common.parse_output_commands(output_commands)
@@ -92,7 +92,6 @@ def bufferbloat_run():
     #
 
     # Aggregate data
-    interval_sum_stats = {}
     interval_stats = {}
 
     summary_stats = {"timestamp": runtest_time}
@@ -133,15 +132,13 @@ def bufferbloat_run():
                 summary_stats[f"{stream_direction}_bits_per_second"] = int(
                     values["output_parsed"]["end"]["sum_received"]["bits_per_second"]
                 )
+    """
 
-    common.save_iperf3_interval_results_into_CSV(interval_stats)
-
+    #
+    # Display data
+    #
     summary_stats["description"] = args.obj.description
-
-    if args.obj.csv:
-        # summary-stats
-        fn = f"{args.obj.result_dst_path}bb-test_summary-stats_{args.obj.description}{runtest_time}.csv"
-        common.save_CSV(fn, list(summary_stats.keys()), [summary_stats])
+    runtest_time = common.get_timestamp_now()
 
     print_summary_stats = (
         f"  runtime: {summary_stats['timestamp']}\n"
@@ -164,3 +161,27 @@ def bufferbloat_run():
         print(
             f"bufferbloat grade: {bufferbloat_grade(round(effective_latency_inc, 2))}"
         )
+
+    #
+    # Save data
+    #
+    if args.obj.csv:
+
+        output_operations.save_to_CSV(runtest_time, summary_stats, interval_stats)
+        
+        """
+        description = (
+            f'{summary_stats["description"]}_' if summary_stats["description"] else ""
+        )
+
+        # summary-stats
+        fn = f"{args.obj.result_dst_path}bufferbloat-test_summary-stats_{description}{runtest_time}.csv"
+        common.save_CSV(fn, list(summary_stats.keys()), [summary_stats])
+        log.info(f"summary stats data saved in: {fn}")
+
+        fn = f"{args.obj.result_dst_path}bufferbloat-test_intervals-stats_{description}{runtest_time}.csv"
+        header, CSV_content = output_operations.prepare_iperf3_interval_results_for_CSV(
+            interval_stats
+        )
+        common.save_CSV(fn, header, CSV_content)
+        """

@@ -154,14 +154,6 @@ Wrapper to expand iperf3 capabilities
     )
 
     parser.add_argument(
-        "--scf",
-        dest="scf",
-        action="store",
-        type=str,
-        help="status cmd file for ibssh to configure GW",
-    )
-
-    parser.add_argument(
         "--result-dst-path",
         dest="result_dst_path",
         action="store",
@@ -174,7 +166,7 @@ Wrapper to expand iperf3 capabilities
         "--save-outputs",
         dest="save_outputs",
         action="store_true",
-        help="save output from commands",
+        help="save raw output from commands",
     )
 
     parser.add_argument(

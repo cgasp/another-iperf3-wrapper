@@ -9,9 +9,7 @@ from subprocess import Popen, PIPE, check_output, run
 from rich import print
 from rich.panel import Panel
 
-import bufferbloat
-import args
-import common
+from utils import args, common, run_commands, output_operations
 
 log = logging.getLogger("another-iperf3-wrapper")
 
@@ -26,7 +24,7 @@ def probe_run():
     print(f"host: {args.obj.host}")
 
     if not args.obj.no_probe and not args.obj.dry_run:
-        free_ports = common.probe_iperf3(
+        free_ports = run_commands.probe_iperf3(
             args.obj.host, common.data["port_list"], required_ports=1
         )
 
@@ -45,9 +43,9 @@ def probe_run():
         cmd: 0.1,
     }
 
-    output_commands = common.run_commands(scenario_cmds)
+    output_commands = run_commands.run_commands(scenario_cmds)
 
-    output_commands = common.parse_output_commands(output_commands)
+    output_commands = output_operations.parse_output_commands(output_commands)
 
     for cmd, output in output_commands.items():
         if output["type"] == "iperf3":

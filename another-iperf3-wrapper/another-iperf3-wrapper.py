@@ -10,11 +10,8 @@ import sys
 
 from rich import print
 
-import bufferbloat
-import args
-import common
-import probe
-import bdp
+from modules import bufferbloat, probe, bdp, run_iperf
+from utils import args, common, run_commands, output_operations
 
 
 # get main logger
@@ -134,6 +131,15 @@ def generate_cmds_args(cmds_args_expanded):
 
 
 def check_port_arg(arg_port):
+    """parse port argument into port list
+
+    Args:
+        arg_port (str): port argument
+
+    Returns:
+        list: port list
+    """
+
     port_list = []
     try:
         port_list = [int(arg_port)]
@@ -226,8 +232,10 @@ def main():
 
     # default iperf run
     if not args.obj.cmd:
+
+        # run iperf3 probing
         if not args.obj.no_probe and not args.obj.dry_run:
-            free_ports = common.probe_iperf3(
+            free_ports = run_commands.probe_iperf3(
                 args.obj.host, common.data["port_list"], required_ports=1
             )
 
@@ -239,20 +247,15 @@ def main():
             )
 
         scenario_cmds = {
+            "ping {} -c {} -D".format(args.obj.host,str(int(args.obj.time) + 10)): 2,
             cmd: 0.1,
         }
 
-        output_commands = common.run_commands(scenario_cmds)
+        runtest_time = common.get_timestamp_now()
+        interval_stats, summary_stats = run_iperf.run(scenario_cmds)
+        summary_stats["description"] = args.obj.description
 
-        output_commands = common.parse_output_commands(output_commands)
-
-        print(output_commands) if log.level in (10, 20) else None
-
-        parsed_data = common.parse_iperf3_intervals(output_commands)
-
-        for k, v in parsed_data.items():
-            fn = f"{args.obj.result_dst_path}{common.get_str_cmd(cmd)}_{k}_{common.get_timestamp_now()}.csv"
-            common.save_CSV(fn, v[0].keys(), v)
+        output_operations.save_to_CSV(runtest_time, summary_stats, interval_stats)
 
 
 if __name__ == "__main__":
@@ -260,6 +263,7 @@ if __name__ == "__main__":
     configFileNotFoundError = False
     config = {}
     try:
+        # default config file
         config_file = "~/.config/another-iperf3-wrapper/another-iperf3-wrapper.json"
 
         expanded_config_file = os.path.expanduser(config_file)
