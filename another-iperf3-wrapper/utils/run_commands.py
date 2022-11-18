@@ -1,14 +1,9 @@
-import datetime
 import logging
-import re
-import csv
 import time
-import json
-import collections
 
-from subprocess import Popen, PIPE, check_output, run
+from subprocess import Popen, PIPE, check_output
 
-from utils import args, common, run_commands, output_operations
+from utils import args
 
 
 log = logging.getLogger("another-iperf3-wrapper")

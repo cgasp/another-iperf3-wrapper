@@ -1,10 +1,5 @@
 import re
-import json
 import logging
-import statistics
-
-import time
-from subprocess import Popen, PIPE, check_output, run
 
 from rich import print
 from rich.panel import Panel
@@ -15,6 +10,7 @@ log = logging.getLogger("another-iperf3-wrapper")
 
 
 def probe_run():
+    """run probe feature - check iperf3 server and estimate maximum performance base on RTT and Memory configured"""
     print(
         Panel.fit(
             "Probe iperf3 server, available port and estimate maximum performance base on RTT and Memory configured",
@@ -50,13 +46,11 @@ def probe_run():
     for cmd, output in output_commands.items():
         if output["type"] == "iperf3":
 
-            streams_rtt = []
-            for interval in output_commands[cmd]["output_parsed"]["intervals"]:
-                streams_rtt.append(float(interval["streams"][0]["rtt"] / 1000))
+            streams_rtt = output_operations.calculate_streams_rtt_stats(
+                output_commands[cmd]["output_parsed"]["intervals"]
+            )
 
-            mean_streams_rtt = statistics.mean(streams_rtt)
-
-            print(f"Avg streams rtt: {round(mean_streams_rtt,2)}ms")
+            print(f"Avg streams rtt: {round(streams_rtt['mean'],2)} ms")
 
             print(f"\n# Sending (Upload)")
 
@@ -64,7 +58,7 @@ def probe_run():
             print(f"max_wmem: {common.units_to_humanReadable(max_mem)}bytes")
 
             max_tput = common.units_to_humanReadable(
-                common.calculate_tput_BDP(max_mem, mean_streams_rtt)
+                common.calculate_tput_BDP(max_mem, streams_rtt["mean"])
             )
 
             print(f"max sending theoritical throughput: {max_tput}bps")
@@ -77,7 +71,7 @@ def probe_run():
             max_mem = common.get_max_tcp_mem("tcp_rmem")
 
             max_tput = common.units_to_humanReadable(
-                common.calculate_tput_BDP(max_mem, mean_streams_rtt)
+                common.calculate_tput_BDP(max_mem, streams_rtt["mean"])
             )
 
             print(f"max receiving theoritical throughput: {max_tput}bps")

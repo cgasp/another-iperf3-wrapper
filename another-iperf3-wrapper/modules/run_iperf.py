@@ -6,6 +6,14 @@ log = logging.getLogger("another-iperf3-wrapper")
 
 
 def run(scenario_cmds):
+    """main function to run iperf3 standalone or on bufferbloat test
+
+    Args:
+        scenario_cmds (dict): contains commands to run 
+
+    Returns:
+        dict: with results 
+    """
 
     runtest_time = common.get_timestamp_now()
 
@@ -67,5 +75,12 @@ def run(scenario_cmds):
                 summary_stats[f"{stream_direction}_bits_per_second"] = int(
                     values["output_parsed"]["end"]["sum_received"]["bits_per_second"]
                 )
+
+                if not any(arg in cmd for arg in ["-u", "-R"]):
+                    summary_stats.update(
+                        output_operations.calculate_streams_rtt_stats(
+                            output_commands[cmd]["output_parsed"]["intervals"]
+                        )
+                    )
 
     return interval_stats, summary_stats

@@ -1,14 +1,9 @@
 import datetime
 import logging
-import re
 import csv
-import time
-import json
 import collections
 
-from subprocess import Popen, PIPE, check_output, run
-
-from utils import args
+from subprocess import run
 
 log = logging.getLogger("another-iperf3-wrapper")
 
@@ -90,12 +85,14 @@ def units_to_humanReadable(bps):
         10: {"divider": 1000000, "unit": "M"},
         13: {"divider": 1000000000, "unit": "G"},
     }
-
-    len_str_bps = len(str(int(bps)))
-    for length, suffix in unit_suffix.items():
-        if len_str_bps < length:
-            str_bps = str(round(bps / suffix["divider"], 2))
-            return f"{str_bps} {suffix['unit']}"
+    if bps:
+        len_str_bps = len(str(int(bps)))
+        for length, suffix in unit_suffix.items():
+            if len_str_bps < length:
+                str_bps = str(round(bps / suffix["divider"], 2))
+                return f"{str_bps} {suffix['unit']}"
+    else:
+        return False
 
 
 def calculate_tput_BDP(buffer_size, latency):

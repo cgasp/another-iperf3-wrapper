@@ -1,7 +1,5 @@
 import logging
-import json
 import re
-import datetime
 
 from utils import args, common, run_commands, output_operations
 from modules import run_iperf
@@ -37,6 +35,7 @@ def bufferbloat_grade(effective_latency_inc):
 
 
 def bufferbloat_run():
+    """main function to run bufferbloat test"""
 
     if len(common.data["port_list"]) == 1:
         common.data["port_list"][1] = common.data["port_list"][0] + 1
@@ -76,87 +75,21 @@ def bufferbloat_run():
         log.info(f"commands: {cmd}")
 
     interval_stats, summary_stats = run_iperf.run(scenario_cmds)
-    """ 
-    output_commands = common.run_commands(scenario_cmds)
-
-    output_commands = common.parse_output_commands(output_commands)
-
-    for cmd, output in output_commands.items():
-        if args.obj.save_outputs:
-            str_cmd = cmd.replace("-", "_").replace(" ", "")
-            fn = f"{args.obj.result_dst_path}{str_cmd}_{runtest_time}.{output['ext']}"
-            common.save_outputs(fn, output["raw"])
-
-    #
-    # Stats
-    #
-
-    # Aggregate data
-    interval_stats = {}
-
-    summary_stats = {"timestamp": runtest_time}
-
-    for cmd, values in output_commands.items():
-        test_error = values["output_parsed"].get("error", False)
-        if test_error:
-            log.error(f"test invalid - error: {test_error}")
-        else:
-            if values["type"] == "ping":
-                for pckts_stats in values["output_parsed"]["pckts_stats"]:
-                    rounded_timestamp = int(round(float(pckts_stats["unix_time"]), 0))
-
-                    if not interval_stats.get(rounded_timestamp, False):
-                        # if the timestamp doesn't exist
-                        interval_stats[rounded_timestamp] = {"ping": {}}
-                    elif not interval_stats[rounded_timestamp].get("ping", False):
-                        # if there is no ping data
-                        interval_stats[rounded_timestamp]["ping"] = {}
-
-                    interval_stats[rounded_timestamp]["ping"].update(pckts_stats)
-
-                for stat_name, stat_value in values["output_parsed"]["stats"].items():
-                    summary_stats[f"imcp_{stat_name}"] = stat_value
-
-            if values["type"] == "iperf3":
-
-                stream_direction = (
-                    "downstream"
-                    if values["output_parsed"]["start"]["test_start"]["reverse"] == 1
-                    else "upstream"
-                )
-
-                interval_stats = common.set_iperf3_results_by_timestamp(
-                    interval_stats, stream_direction, values["output_parsed"]
-                )
-
-                summary_stats[f"{stream_direction}_bits_per_second"] = int(
-                    values["output_parsed"]["end"]["sum_received"]["bits_per_second"]
-                )
-    """
+    runtest_time = common.get_timestamp_now()
+    summary_stats["timestamp"] = runtest_time
 
     #
     # Display data
     #
-    summary_stats["description"] = args.obj.description
-    runtest_time = common.get_timestamp_now()
+    output_operations.display_summary_stats(summary_stats)
 
-    print_summary_stats = (
-        f"  runtime: {summary_stats['timestamp']}\n"
-        f"  download: {common.units_to_humanReadable(summary_stats['downstream_bits_per_second'])}bps\n"
-        f"  upload: {common.units_to_humanReadable(summary_stats['upstream_bits_per_second'])}bps\n"
-        f"  ICMP packets TX: {summary_stats['imcp_pckts_tx']}\n"
-        f"  ICMP packets RX: {summary_stats['imcp_pckts_rx']}\n"
-        f"  ICMP packets loss: {summary_stats['imcp_pckts_loss_perc']}\n"
-        f"  ICMP RTT min: {summary_stats['imcp_rtt_min']}\n"
-        f"  ICMP RTT avg: {summary_stats['imcp_rtt_avg']}\n"
-        f"  ICMP RTT max: {summary_stats['imcp_rtt_max']}\n"
-        f"  ICMP RTT mdev: {summary_stats['imcp_rtt_mdev']}\n"
-    )
+    #
+    # Bufferbloat specific
+    #
     if log.level in (10, 20):
         effective_latency_inc = float(summary_stats["imcp_rtt_max"]) - float(
             summary_stats["imcp_rtt_min"]
         )
-        print(f"summary_stats:\n{print_summary_stats}")
 
         print(
             f"bufferbloat grade: {bufferbloat_grade(round(effective_latency_inc, 2))}"
@@ -167,21 +100,6 @@ def bufferbloat_run():
     #
     if args.obj.csv:
 
-        output_operations.save_to_CSV(runtest_time, summary_stats, interval_stats)
-        
-        """
-        description = (
-            f'{summary_stats["description"]}_' if summary_stats["description"] else ""
+        output_operations.save_to_CSV(
+            "bufferbloat-test", runtest_time, summary_stats, interval_stats
         )
-
-        # summary-stats
-        fn = f"{args.obj.result_dst_path}bufferbloat-test_summary-stats_{description}{runtest_time}.csv"
-        common.save_CSV(fn, list(summary_stats.keys()), [summary_stats])
-        log.info(f"summary stats data saved in: {fn}")
-
-        fn = f"{args.obj.result_dst_path}bufferbloat-test_intervals-stats_{description}{runtest_time}.csv"
-        header, CSV_content = output_operations.prepare_iperf3_interval_results_for_CSV(
-            interval_stats
-        )
-        common.save_CSV(fn, header, CSV_content)
-        """

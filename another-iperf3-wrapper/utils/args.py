@@ -4,6 +4,8 @@ obj = object()
 
 
 def arg_parse(config_default):
+    """main argument parser"""
+
     text_description = """
 Wrapper to expand iperf3 capabilities 
 

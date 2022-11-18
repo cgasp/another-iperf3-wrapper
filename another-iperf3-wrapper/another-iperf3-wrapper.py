@@ -247,18 +247,24 @@ def main():
             )
 
         scenario_cmds = {
-            "ping {} -c {} -D".format(args.obj.host,str(int(args.obj.time) + 10)): 2,
+            "ping {} -c {} -D".format(args.obj.host, str(int(args.obj.time) + 10)): 2,
             cmd: 0.1,
         }
 
         runtest_time = common.get_timestamp_now()
         interval_stats, summary_stats = run_iperf.run(scenario_cmds)
         summary_stats["description"] = args.obj.description
+        # summary_stats["timestamp"] = runtest_time
 
-        output_operations.save_to_CSV(runtest_time, summary_stats, interval_stats)
+        output_operations.display_summary_stats(summary_stats)
+
+        output_operations.save_to_CSV(
+            "single-test", runtest_time, summary_stats, interval_stats
+        )
 
 
 if __name__ == "__main__":
+    """app entry point"""
 
     configFileNotFoundError = False
     config = {}

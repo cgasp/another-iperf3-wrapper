@@ -2,7 +2,7 @@ import datetime
 import logging
 import re
 import json
-
+import statistics
 
 from utils import args, common, output_operations
 
@@ -235,19 +235,89 @@ def prepare_iperf3_interval_results_for_CSV(interval_stats):
     return header, CSV_content
 
 
-def save_to_CSV(runtest_time, summary_stats, interval_stats):
+def calculate_streams_rtt_stats(intervals):
+    """for given intervals stream information retrieve RTT and calculate basic stats
+
+    Args:
+        intervals (dict): contain intervals information
+
+    Returns:
+        dict: with min, mean, max, mdev
+    """
+
+    streams_rtt = []
+    for interval in intervals:
+        for stream in interval["streams"]:
+            streams_rtt.append(float(stream["rtt"] / 1000))
+
+    return {
+        "mean": round(statistics.mean(streams_rtt), 3),
+        "max": round(max(streams_rtt), 3),
+        "min": round(min(streams_rtt), 3),
+        "mdev": round(statistics.stdev(streams_rtt), 3),
+    }
+
+
+def save_to_CSV(test_type, runtest_time, summary_stats, interval_stats):
+    """save information to CSV
+
+    Args:
+        test_type (str): test type to be included in filename
+        runtest_time (str): runtime information to be included in filename
+        summary_stats (dict): summarize information to saved in CSV
+        interval_stats (dict): interval information to saved in CSV
+    """
     description = (
         f'{summary_stats["description"]}_' if summary_stats["description"] else ""
     )
 
     # summary-stats
-    fn = f"{args.obj.result_dst_path}bufferbloat-test_summary-stats_{description}{runtest_time}.csv"
+    fn = f"{args.obj.result_dst_path}{test_type}_summary-stats_{description}{runtest_time}.csv"
     common.save_CSV(fn, list(summary_stats.keys()), [summary_stats])
     log.info(f"summary stats data saved in: {fn}")
 
-    fn = f"{args.obj.result_dst_path}bufferbloat-test_intervals-stats_{description}{runtest_time}.csv"
+    fn = f"{args.obj.result_dst_path}{test_type}_intervals-stats_{description}{runtest_time}.csv"
     header, CSV_content = output_operations.prepare_iperf3_interval_results_for_CSV(
         interval_stats
     )
     common.save_CSV(fn, header, CSV_content)
     log.info(f"interval stats data saved in: {fn}")
+
+
+def display_summary_stats(summary_stats):
+    """display summarize stats 
+
+    Args:
+        summary_stats (dict): data to be displayed 
+    """
+
+    summary_stats["description"] = args.obj.description
+
+    download_bps = common.units_to_humanReadable(
+        summary_stats.get("downstream_bits_per_second", "")
+    )
+    download_bps = f"{download_bps}bps" if download_bps else "None"
+
+    upload_bps = common.units_to_humanReadable(
+        summary_stats.get("upstream_bits_per_second", "")
+    )
+    upload_bps = f"{upload_bps}bps" if upload_bps else "None"
+
+    # only support in iperf3 upstream test
+    rtt_elements = ["min", "mean", "max", "mdev"]
+    rtt_min_avg_max_mdev = ""
+    if all(i in summary_stats.keys() for i in rtt_elements):
+        rtt_min_avg_max_mdev = f"    rtt min/avg/max/mdev: {summary_stats['min']}/{summary_stats['mean']}/{summary_stats['max']}/{summary_stats['mdev']} ms\n"
+
+    print_summary_stats = (
+        f"  runtime: {summary_stats['timestamp']}\n"
+        f"  iperf3:\n"
+        f"    download: {download_bps}\n"
+        f"    upload: {upload_bps}\n"
+        f"{rtt_min_avg_max_mdev}"
+        f"  ICMP:\n"
+        f"    packets tx/rx/loss: {summary_stats['imcp_pckts_tx']}/{summary_stats['imcp_pckts_rx']}/{summary_stats['imcp_pckts_loss_perc']}\n"
+        f"    rtt min/avg/max/mdev: {summary_stats['imcp_rtt_min']}/{summary_stats['imcp_rtt_avg']}/{summary_stats['imcp_rtt_max']}/{summary_stats['imcp_rtt_mdev']} ms\n"
+    )
+
+    print(f"summary_stats:\n{print_summary_stats}")
