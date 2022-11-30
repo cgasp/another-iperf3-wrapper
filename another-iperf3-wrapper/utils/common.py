@@ -2,6 +2,7 @@ import datetime
 import logging
 import csv
 import collections
+from os.path import expanduser
 
 from subprocess import run
 
@@ -62,7 +63,7 @@ def save_CSV(dst_filename, header, csv_content):
         header (list): list of keys to be saved
         csv_content (list): list of dict with keys
     """
-    with open(dst_filename, "w") as output_file:
+    with open(expanduser(dst_filename), "w") as output_file:
         dict_writer = csv.DictWriter(output_file, header)
         dict_writer.writeheader()
         dict_writer.writerows(csv_content)
