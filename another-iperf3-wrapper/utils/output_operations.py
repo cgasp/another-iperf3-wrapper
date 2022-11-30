@@ -285,10 +285,10 @@ def save_to_CSV(test_type, runtest_time, summary_stats, interval_stats):
 
 
 def display_summary_stats(summary_stats):
-    """display summarize stats 
+    """display summarize stats
 
     Args:
-        summary_stats (dict): data to be displayed 
+        summary_stats (dict): data to be displayed
     """
 
     summary_stats["description"] = args.obj.description
@@ -307,17 +307,27 @@ def display_summary_stats(summary_stats):
     rtt_elements = ["min", "mean", "max", "mdev"]
     rtt_min_avg_max_mdev = ""
     if all(i in summary_stats.keys() for i in rtt_elements):
-        rtt_min_avg_max_mdev = f"    rtt min/avg/max/mdev: {summary_stats['min']}/{summary_stats['mean']}/{summary_stats['max']}/{summary_stats['mdev']} ms\n"
+        rtt_min_avg_max_mdev = (
+            # f"    rtt min/avg/max/mdev: {summary_stats['min']}/{summary_stats['mean']}/{summary_stats['max']}/{summary_stats['mdev']} ms\n"
+            f"  rtt min: {summary_stats['min']} ms\n"
+            f"  rtt avg: {summary_stats['mean']} ms\n"
+            f"  rtt max: {summary_stats['max']} ms\n"
+            f"  rtt mdev: {summary_stats['mdev']} ms\n"
+        )
 
     print_summary_stats = (
-        f"  runtime: {summary_stats['timestamp']}\n"
-        f"  iperf3:\n"
-        f"    download: {download_bps}\n"
-        f"    upload: {upload_bps}\n"
+        f"runtime: {summary_stats['timestamp']}\n"
+        f"iperf3:\n"
+        f"  download: {download_bps}\n"
+        f"  upload: {upload_bps}\n"
         f"{rtt_min_avg_max_mdev}"
-        f"  ICMP:\n"
-        f"    packets tx/rx/loss: {summary_stats['imcp_pckts_tx']}/{summary_stats['imcp_pckts_rx']}/{summary_stats['imcp_pckts_loss_perc']}\n"
-        f"    rtt min/avg/max/mdev: {summary_stats['imcp_rtt_min']}/{summary_stats['imcp_rtt_avg']}/{summary_stats['imcp_rtt_max']}/{summary_stats['imcp_rtt_mdev']} ms\n"
+        f"ICMP:\n"
+        f"  packets tx/rx/loss: {summary_stats['imcp_pckts_tx']}/{summary_stats['imcp_pckts_rx']}/{summary_stats['imcp_pckts_loss_perc']}\n"
+        f"  rtt min: {summary_stats['imcp_rtt_min']} ms\n"
+        f"  rtt avg: {summary_stats['imcp_rtt_avg']} ms\n"
+        f"  rtt max: {summary_stats['imcp_rtt_max']} ms\n"
+        f"  rtt mdev: {summary_stats['imcp_rtt_mdev']} ms\n"
+        # avg/max/mdev: /// ms\n"
     )
 
-    print(f"summary_stats:\n{print_summary_stats}")
+    print(f"# summary_stats \n{print_summary_stats}")
