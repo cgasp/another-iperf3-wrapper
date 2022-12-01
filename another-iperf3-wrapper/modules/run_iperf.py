@@ -9,10 +9,10 @@ def run(scenario_cmds):
     """main function to run iperf3 standalone or on bufferbloat test
 
     Args:
-        scenario_cmds (dict): contains commands to run 
+        scenario_cmds (dict): contains commands to run
 
     Returns:
-        dict: with results 
+        dict: with results
     """
 
     runtest_time = common.get_timestamp_now()
@@ -76,11 +76,29 @@ def run(scenario_cmds):
                     values["output_parsed"]["end"]["sum_received"]["bits_per_second"]
                 )
 
-                if not any(arg in cmd for arg in ["-u", "-R"]):
+                # if not any(arg in cmd for arg in ["-u", "-R"]):
+                if output_commands[cmd]["output_parsed"]["intervals"][0]["streams"][
+                    0
+                ].get("rtt", False):
                     summary_stats.update(
                         output_operations.calculate_streams_rtt_stats(
                             output_commands[cmd]["output_parsed"]["intervals"]
                         )
                     )
+                else:
+                    # Not existants
+                    summary_stats.update(
+                        {
+                            "avg": "",
+                            "max": "",
+                            "min": "",
+                            "mdev": "",
+                        }
+                    )
+    if not summary_stats.get("upstream_bits_per_second", False):
+        summary_stats["upstream_bits_per_second"] = ""
+
+    if not summary_stats.get("downstream_bits_per_second", False):
+        summary_stats["downstream_bits_per_second"] = ""
 
     return interval_stats, summary_stats

@@ -77,6 +77,7 @@ def bufferbloat_run():
     interval_stats, summary_stats = run_iperf.run(scenario_cmds)
     runtest_time = common.get_timestamp_now()
     summary_stats["timestamp"] = runtest_time
+    summary_stats["description"] = args.obj.description
 
     #
     # Display data

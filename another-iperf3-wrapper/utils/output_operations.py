@@ -251,7 +251,7 @@ def calculate_streams_rtt_stats(intervals):
             streams_rtt.append(float(stream["rtt"] / 1000))
 
     return {
-        "mean": round(statistics.mean(streams_rtt), 3),
+        "avg": round(statistics.mean(streams_rtt), 3),
         "max": round(max(streams_rtt), 3),
         "min": round(min(streams_rtt), 3),
         "mdev": round(statistics.stdev(streams_rtt), 3),
@@ -271,6 +271,7 @@ def save_to_CSV(test_type, runtest_time, summary_stats, interval_stats):
         f'{summary_stats["description"]}_' if summary_stats["description"] else ""
     )
 
+    
     # summary-stats
     fn = f"{args.obj.result_dst_path}{test_type}_summary-stats_{description}{runtest_time}.csv"
     common.save_CSV(fn, list(summary_stats.keys()), [summary_stats])
@@ -296,35 +297,35 @@ def display_summary_stats(summary_stats):
     download_bps = common.units_to_humanReadable(
         summary_stats.get("downstream_bits_per_second", "")
     )
-    download_bps = f"{download_bps}bps" if download_bps else "None"
+    download_bps = f"{download_bps}bps" if download_bps else "N/A"
 
     upload_bps = common.units_to_humanReadable(
         summary_stats.get("upstream_bits_per_second", "")
     )
-    upload_bps = f"{upload_bps}bps" if upload_bps else "None"
+    upload_bps = f"{upload_bps}bps" if upload_bps else "N/A"
 
-    # only support in iperf3 upstream test
-    rtt_elements = ["min", "mean", "max", "mdev"]
-    rtt_min_avg_max_mdev = ""
-    if all(i in summary_stats.keys() for i in rtt_elements):
-        rtt_min_avg_max_mdev = (
-            # f"    rtt min/avg/max/mdev: {summary_stats['min']}/{summary_stats['mean']}/{summary_stats['max']}/{summary_stats['mdev']} ms\n"
-            f"  rtt min: {summary_stats['min']} ms\n"
-            f"  rtt avg: {summary_stats['mean']} ms\n"
-            f"  rtt max: {summary_stats['max']} ms\n"
-            f"  rtt mdev: {summary_stats['mdev']} ms\n"
+    # only upstream test will display values
+    iperf3_rtt_stats = ""
+    rtt_elements = ["avg", "min", "max", "mdev"]
+
+    for rtt_element in rtt_elements:
+        iperf3_rtt_stat = (
+            f"  rtt {rtt_element}: {summary_stats[rtt_element]} ms\n"
+            if summary_stats[rtt_element]
+            else f"  rtt {rtt_element}: N/A\n"
         )
+        iperf3_rtt_stats += iperf3_rtt_stat
 
     print_summary_stats = (
         f"runtime: {summary_stats['timestamp']}\n"
         f"iperf3:\n"
         f"  download: {download_bps}\n"
         f"  upload: {upload_bps}\n"
-        f"{rtt_min_avg_max_mdev}"
+        f"{iperf3_rtt_stats}"
         f"ICMP:\n"
         f"  packets tx/rx/loss: {summary_stats['imcp_pckts_tx']}/{summary_stats['imcp_pckts_rx']}/{summary_stats['imcp_pckts_loss_perc']}\n"
-        f"  rtt min: {summary_stats['imcp_rtt_min']} ms\n"
         f"  rtt avg: {summary_stats['imcp_rtt_avg']} ms\n"
+        f"  rtt min: {summary_stats['imcp_rtt_min']} ms\n"
         f"  rtt max: {summary_stats['imcp_rtt_max']} ms\n"
         f"  rtt mdev: {summary_stats['imcp_rtt_mdev']} ms\n"
         # avg/max/mdev: /// ms\n"

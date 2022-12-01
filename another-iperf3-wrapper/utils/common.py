@@ -31,7 +31,7 @@ def save_outputs(filename, output):
         filename (str): target filename with full path
         output (str): content to save
     """
-    with open(filename, "a") as f:
+    with open(expanduser(filename), "a") as f:
         f.write(output)
 
 
