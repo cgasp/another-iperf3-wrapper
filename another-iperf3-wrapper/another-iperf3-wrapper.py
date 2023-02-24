@@ -191,9 +191,6 @@ def main():
         log.error("No valid host, please set a host with argument '-c'  \nexit")
         exit(0)
 
-    if args.obj.description:
-        args.obj.description += "_"
-
     common.data["port_list"] = check_port_arg(args.obj.port)
 
     cmds_args = {
@@ -257,10 +254,10 @@ def main():
         # summary_stats["timestamp"] = runtest_time
 
         output_operations.display_summary_stats(summary_stats)
-
-        output_operations.save_to_CSV(
-            "single-test", runtest_time, summary_stats, interval_stats
-        )
+        if args.obj.csv:
+            output_operations.save_to_CSV(
+                "ST", runtest_time, summary_stats, interval_stats
+            )
 
 
 if __name__ == "__main__":

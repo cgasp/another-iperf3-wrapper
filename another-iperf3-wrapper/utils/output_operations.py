@@ -273,11 +273,11 @@ def save_to_CSV(test_type, runtest_time, summary_stats, interval_stats):
 
     
     # summary-stats
-    fn = f"{args.obj.result_dst_path}{test_type}_summary-stats_{description}{runtest_time}.csv"
+    fn = f"{args.obj.result_dst_path}{test_type}_summary_{description}{runtest_time}.csv"
     common.save_CSV(fn, list(summary_stats.keys()), [summary_stats])
     log.info(f"summary stats data saved in: {fn}")
 
-    fn = f"{args.obj.result_dst_path}{test_type}_intervals-stats_{description}{runtest_time}.csv"
+    fn = f"{args.obj.result_dst_path}{test_type}_intervals_{description}{runtest_time}.csv"
     header, CSV_content = output_operations.prepare_iperf3_interval_results_for_CSV(
         interval_stats
     )
