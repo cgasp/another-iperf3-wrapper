@@ -130,6 +130,13 @@ Wrapper to expand iperf3 capabilities
     )
 
     parser.add_argument(
+        "--json",
+        dest="json",
+        action="store_true",
+        help="generate a json file with data",
+    )
+
+    parser.add_argument(
         "-i",
         "--input_file",
         dest="input_file",

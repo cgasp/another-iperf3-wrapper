@@ -179,6 +179,51 @@ def check_port_arg(arg_port):
 
     return port_list
 
+def get_host_list():
+    """get host list from config file
+
+    Returns:
+        list: host list
+    """
+    host_list = []
+    try:
+        # open in app folder the json file contaning list of hosts
+        with open(__file__) as f:
+            hosts = json.load(f)
+            for host in hosts:
+                host_list.append(host["host"])
+
+        """with open(common.data["config_file"]) as f:
+            for line in f:
+                if line.startswith("host:"):
+                    host_list.append(line.split(":")[1].strip())
+        """
+    except Exception as e:
+        log.debug(f"Exception: {e}")
+        log.warning("No host found in config file")
+        return None
+    return host_list
+
+def select_host(host_list):
+    """select a host from list
+
+    Args:
+        host_list (list): list of host
+    """
+    print("Select a host from list:")
+    for i, host in enumerate(host_list):
+        print(f"{i+1}) {host}")
+    print("0) Exit")
+    try:
+        host_index = int(input("Select a host: "))
+        if host_index == 0:
+            return None
+        else:
+            return host_list[host_index-1]
+    except Exception as e:
+        log.debug(f"Exception: {e}")
+        log.warning("No valid host selected")
+        return None
 
 def main():
     """main run
@@ -188,8 +233,20 @@ def main():
     """
 
     if not args.obj.host:
-        log.error("No valid host, please set a host with argument '-c'  \nexit")
+        log.warning("No valid host, please set a host with argument '-c'  \nexit")
         exit(0)
+        
+        # Prototype - ask if user wish to select a host from list
+        host_list = get_host_list()
+        if host_list:
+            host = select_host(host_list)
+            if host:
+                args.obj.host = host
+            else:
+                log.warning("No valid host selected, exit")
+                exit(0)
+
+        
 
     common.data["port_list"] = check_port_arg(args.obj.port)
 
@@ -198,7 +255,10 @@ def main():
         "-p": str(common.data["port_list"][0]),
         "-t": args.obj.time,
         "-P": args.obj.parallel,
+        # json output format
         "-J": "",
+        # zerocopy
+        "-Z": "",
     }
 
     if args.obj.reverse:
@@ -242,7 +302,7 @@ def main():
                 f"-p {free_ports[0]} ",
                 cmd,
             )
-
+        
         scenario_cmds = {
             "ping {} -c {} -D".format(args.obj.host, str(int(args.obj.time) + 10)): 2,
             cmd: 0.1,
@@ -256,6 +316,11 @@ def main():
         output_operations.display_summary_stats(summary_stats)
         if args.obj.csv:
             output_operations.save_to_CSV(
+                "ST", runtest_time, summary_stats, interval_stats
+            )
+
+        if args.obj.json:
+            output_operations.save_to_JSON(
                 "ST", runtest_time, summary_stats, interval_stats
             )
 

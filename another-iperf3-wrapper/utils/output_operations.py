@@ -271,9 +271,10 @@ def save_to_CSV(test_type, runtest_time, summary_stats, interval_stats):
         f'{summary_stats["description"]}_' if summary_stats["description"] else ""
     )
 
-    
     # summary-stats
-    fn = f"{args.obj.result_dst_path}{test_type}_summary_{description}{runtest_time}.csv"
+    fn = (
+        f"{args.obj.result_dst_path}{test_type}_summary_{description}{runtest_time}.csv"
+    )
     common.save_CSV(fn, list(summary_stats.keys()), [summary_stats])
     log.info(f"summary stats data saved in: {fn}")
 
@@ -282,6 +283,29 @@ def save_to_CSV(test_type, runtest_time, summary_stats, interval_stats):
         interval_stats
     )
     common.save_CSV(fn, header, CSV_content)
+    log.info(f"interval stats data saved in: {fn}")
+
+
+def save_to_JSON(test_type, runtest_time, summary_stats, interval_stats):
+    """save information to JSON
+
+    Args:
+        test_type (str): test type to be included in filename
+        runtest_time (str): runtime information to be included in filename
+        summary_stats (dict): summarize information to saved in JSON
+        interval_stats (dict): interval information to saved in JSON
+    """
+    description = (
+        f'{summary_stats["description"]}_' if summary_stats["description"] else ""
+    )
+
+    # summary-stats
+    fn = f"{args.obj.result_dst_path}{test_type}_summary_{description}{runtest_time}.json"
+    common.save_JSON(fn, summary_stats)
+    log.info(f"summary stats data saved in: {fn}")
+
+    fn = f"{args.obj.result_dst_path}{test_type}_intervals_{description}{runtest_time}.json"
+    common.save_JSON(fn, interval_stats)
     log.info(f"interval stats data saved in: {fn}")
 
 
@@ -323,11 +347,11 @@ def display_summary_stats(summary_stats):
         f"  upload: {upload_bps}\n"
         f"{iperf3_rtt_stats}"
         f"ICMP:\n"
-        f"  packets tx/rx/loss: {summary_stats['imcp_pckts_tx']}/{summary_stats['imcp_pckts_rx']}/{summary_stats['imcp_pckts_loss_perc']}\n"
-        f"  rtt avg: {summary_stats['imcp_rtt_avg']} ms\n"
-        f"  rtt min: {summary_stats['imcp_rtt_min']} ms\n"
-        f"  rtt max: {summary_stats['imcp_rtt_max']} ms\n"
-        f"  rtt mdev: {summary_stats['imcp_rtt_mdev']} ms\n"
+        f"  packets tx/rx/loss: {summary_stats['icmp_pckts_tx']}/{summary_stats['icmp_pckts_rx']}/{summary_stats['icmp_pckts_loss_perc']}\n"
+        f"  rtt avg: {summary_stats['icmp_rtt_avg']} ms\n"
+        f"  rtt min: {summary_stats['icmp_rtt_min']} ms\n"
+        f"  rtt max: {summary_stats['icmp_rtt_max']} ms\n"
+        f"  rtt mdev: {summary_stats['icmp_rtt_mdev']} ms\n"
         # avg/max/mdev: /// ms\n"
     )
 

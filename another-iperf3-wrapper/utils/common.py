@@ -1,6 +1,7 @@
 import datetime
 import logging
 import csv
+import json
 import collections
 from os.path import expanduser
 
@@ -68,6 +69,17 @@ def save_CSV(dst_filename, header, csv_content):
         dict_writer.writeheader()
         dict_writer.writerows(csv_content)
         log.debug(f"CSV saved in {dst_filename}")
+
+def save_JSON(dst_filename, json_content):
+    """save into JSON file
+
+    Args:
+        dst_filename (str): JSON file destination
+        json_content (list): list of dict with keys
+    """
+    with open(expanduser(dst_filename), "w") as output_file:
+        json.dump(json_content, output_file, indent=4)
+        log.debug(f"JSON saved in {dst_filename}")
 
 
 def units_to_humanReadable(bps):

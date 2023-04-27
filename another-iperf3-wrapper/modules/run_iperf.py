@@ -58,7 +58,7 @@ def run(scenario_cmds):
                     interval_stats[rounded_timestamp]["ping"].update(pckts_stats)
 
                 for stat_name, stat_value in values["output_parsed"]["stats"].items():
-                    summary_stats[f"imcp_{stat_name}"] = stat_value
+                    summary_stats[f"icmp_{stat_name}"] = stat_value
 
             if values["type"] == "iperf3":
 

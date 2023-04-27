@@ -88,8 +88,8 @@ def bufferbloat_run():
     # Bufferbloat specific
     #
     if log.level in (10, 20):
-        effective_latency_inc = float(summary_stats["imcp_rtt_max"]) - float(
-            summary_stats["imcp_rtt_min"]
+        effective_latency_inc = float(summary_stats["icmp_rtt_max"]) - float(
+            summary_stats["icmp_rtt_min"]
         )
 
         print(
