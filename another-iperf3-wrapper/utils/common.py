@@ -2,7 +2,7 @@ import datetime
 import logging
 import csv
 import json
-import collections
+import collections.abc
 from os.path import expanduser
 
 from subprocess import run
@@ -149,13 +149,13 @@ def get_max_tcp_mem(type):
     return float(tcp_mem.strip().split("\t")[-1])
 
 
-def flatten(d, parent_key="", sep="_"):
+def flatten(d, parent_key='', sep='.'):
     """Recursively transform a dict in a flatten dict of values
 
     Args:
         d (dict): dictionary to flatten
         parent_key (str, optional). Defaults to "".
-        sep (str, optional): separator between keys. Defaults to "_".
+        sep (str, optional): separator between keys. Defaults to ".".
 
     Returns:
         dict: flatten dict [description]
@@ -163,7 +163,7 @@ def flatten(d, parent_key="", sep="_"):
     items = []
     for k, v in d.items():
         new_key = parent_key + sep + k if parent_key else k
-        if isinstance(v, collections.MutableMapping):
+        if isinstance(v, collections.abc.MutableMapping):
             items.extend(flatten(v, new_key, sep=sep).items())
         else:
             items.append((new_key, v))

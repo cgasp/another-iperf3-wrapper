@@ -231,7 +231,7 @@ def main():
     Args:
         args (obj): main program obj
     """
-
+    
     if not args.obj.host:
         log.warning("No valid host, please set a host with argument '-c'  \nexit")
         exit(0)
@@ -278,6 +278,8 @@ def main():
     cmds_args_generated = generate_cmds_args(cmds_args_expanded)
     common.data["commands"] = generate_cmds("iperf3", cmds_args_generated)
 
+    args.obj.prefix_description = f"{args.obj.prefix_description}-" if args.obj.prefix_description else ""
+
     if args.obj.cmd == "bdp":
         bdp.bdp_run()
 
@@ -316,12 +318,12 @@ def main():
         output_operations.display_summary_stats(summary_stats)
         if args.obj.csv:
             output_operations.save_to_CSV(
-                "ST", runtest_time, summary_stats, interval_stats
+                f"{args.obj.prefix_description}ST", runtest_time, summary_stats, interval_stats
             )
 
         if args.obj.json:
             output_operations.save_to_JSON(
-                "ST", runtest_time, summary_stats, interval_stats
+                f"{args.obj.prefix_description}ST", runtest_time, summary_stats, interval_stats
             )
 
 

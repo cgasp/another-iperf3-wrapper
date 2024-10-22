@@ -155,11 +155,12 @@ Wrapper to expand iperf3 capabilities
     )
 
     parser.add_argument(
-        "--name",
-        dest="name",
+        "--prefix-description",
+        dest="prefix_description",
+        default="",
         action="store",
         type=str,
-        help="input file",
+        help="prefix_description to be included on file name",
     )
 
     parser.add_argument(
