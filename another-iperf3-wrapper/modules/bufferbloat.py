@@ -102,5 +102,5 @@ def bufferbloat_run():
     if args.obj.csv:
 
         output_operations.save_to_CSV(
-            f"{args.obj.prefix_description}BBT", runtest_time, summary_stats, interval_stats
+            f"{args.obj.test_name}BBT", runtest_time, summary_stats, interval_stats
         )
