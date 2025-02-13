@@ -64,9 +64,9 @@ Wrapper to expand iperf3 capabilities
         dest="parallel",
         action="store",
         type=str,
-        default=config_default.get("parallel", "1"),
+        default=config_default.get("parallel", "4"),
         required=False,
-        help="number of parallel client streams to run",
+        help="number of parallel client streams to run (default 4)",
     )
 
     parser.add_argument(
@@ -215,12 +215,38 @@ Wrapper to expand iperf3 capabilities
         default=config_default.get("description", ""),
         help="test description to be included on file name",
     )
+    
+    parser.add_argument(
+        "--iterations",
+        dest="iterations",
+        action="store",
+        type=int,
+        default=config_default.get("iterations", 1),
+        help="how many iterations to run (default: 1)",
+    )
+    
+    parser.add_argument(
+        "--sleep",
+        dest="sleep",
+        action="store",
+        type=int,
+        default=config_default.get("sleep", 2),
+        help="sleep between iterations (default: 1)",
+    )
+    
 
     #
     # bufferbloat test with
     parser_bufferbloat = subparsers.add_parser(
         "bufferbloat",
         help="run iperf3 process to bufferbloat test\n ",
+    )
+    
+    #
+    # all test with
+    parser_all = subparsers.add_parser(
+        "all",
+        help="run all tests\n ",
     )
 
     #
@@ -236,5 +262,7 @@ Wrapper to expand iperf3 capabilities
         "bdp",
         help="calculate max tput\n ",
     )
+    
+    
 
     return parser.parse_args()

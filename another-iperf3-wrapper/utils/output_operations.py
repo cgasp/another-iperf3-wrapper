@@ -1,8 +1,13 @@
+import csv
 import datetime
 import logging
 import re
+import os
 import json
 import statistics
+from rich.console import Console
+from rich.table import Table
+from rich import box
 
 from utils import args, common, output_operations
 
@@ -11,7 +16,6 @@ log = logging.getLogger("another-iperf3-wrapper")
 
 def parse_ping_output(output):
     """parse pint output with regex
-
     Args:
         output (str): text to parse
 
@@ -258,55 +262,71 @@ def calculate_streams_rtt_stats(intervals):
     }
 
 
-def save_to_CSV(test_type, runtest_time, summary_stats, interval_stats):
+def save_to_CSV(test_type, runtest_time, summary_stats_list, interval_stats_list):
     """save information to CSV
 
     Args:
         test_type (str): test type to be included in filename
         runtest_time (str): runtime information to be included in filename
-        summary_stats (dict): summarize information to saved in CSV
-        interval_stats (dict): interval information to saved in CSV
+        summary_stats_list (list): list of summarize information to be saved in CSV
+        interval_stats_list (list): list of interval information to be saved in CSV
     """
     description = (
-        f'{summary_stats["description"]}_' if summary_stats["description"] else ""
+        f'{summary_stats_list[0]["description"]}_' if summary_stats_list[0]["description"] else ""
     )
+    
+    # Ensure the directory exists
+    result_dst_path = os.path.expanduser(args.obj.result_dst_path)
+    os.makedirs(result_dst_path, exist_ok=True)
 
     # summary-stats
-    fn = (
-        f"{args.obj.result_dst_path}{test_type}_summary_{description}{runtest_time}.csv"
+    summary_fn = (
+        f"{result_dst_path}{test_type}_summary_{description}{runtest_time}.csv"
     )
-    common.save_CSV(fn, list(summary_stats.keys()), [summary_stats])
-    log.info(f"summary stats data saved in: {fn}")
+    with open(summary_fn, mode='w', newline='') as file:
+        writer = csv.DictWriter(file, fieldnames=summary_stats_list[0].keys())
+        writer.writeheader()
+        for summary_stats in summary_stats_list:
+            writer.writerow(summary_stats)
+    log.info(f"summary stats data saved in: {summary_fn}")
 
-    fn = f"{args.obj.result_dst_path}{test_type}_intervals_{description}{runtest_time}.csv"
-    header, CSV_content = output_operations.prepare_iperf3_interval_results_for_CSV(
-        interval_stats
-    )
-    common.save_CSV(fn, header, CSV_content)
-    log.info(f"interval stats data saved in: {fn}")
+    for index, interval_stats in enumerate(interval_stats_list):
+        interval_fn = f"{result_dst_path}{test_type}_intervals_{description}{runtest_time}_{index}.csv"
+        header, CSV_content = output_operations.prepare_iperf3_interval_results_for_CSV(
+            interval_stats
+        )
+        common.save_CSV(interval_fn, header, CSV_content)
+        log.debug(f"interval stats data saved in: {interval_fn}")
+    log.info(f"interval stats data saved in: {interval_fn}")
 
 
-def save_to_JSON(test_type, runtest_time, summary_stats, interval_stats):
+def save_to_JSON(test_type, runtest_time, summary_stats_list, interval_stats_list):
     """save information to JSON
 
     Args:
         test_type (str): test type to be included in filename
         runtest_time (str): runtime information to be included in filename
-        summary_stats (dict): summarize information to saved in JSON
-        interval_stats (dict): interval information to saved in JSON
+        summary_stats_list (list): list of summarize information to be saved in JSON
+        interval_stats_list (list): list of interval information to be saved in JSON
     """
     description = (
-        f'{summary_stats["description"]}_' if summary_stats["description"] else ""
+        f'{summary_stats_list[0]["description"]}_' if summary_stats_list[0]["description"] else ""
     )
 
-    # summary-stats
-    fn = f"{args.obj.result_dst_path}{test_type}_summary_{description}{runtest_time}.json"
-    common.save_JSON(fn, summary_stats)
-    log.info(f"summary stats data saved in: {fn}")
+    # Ensure the directory exists
+    result_dst_path = os.path.expanduser(args.obj.result_dst_path)
+    os.makedirs(result_dst_path, exist_ok=True)
 
-    fn = f"{args.obj.result_dst_path}{test_type}_intervals_{description}{runtest_time}.json"
-    common.save_JSON(fn, interval_stats)
-    log.info(f"interval stats data saved in: {fn}")
+    # summary-stats
+    summary_fn = f"{result_dst_path}{test_type}_summary_{description}{runtest_time}.json"
+    common.save_JSON(summary_fn, summary_stats_list)
+    log.info(f"summary stats data saved in: {summary_fn}")
+
+    for index, interval_stats in enumerate(interval_stats_list):
+        interval_fn = f"{result_dst_path}{test_type}_intervals_{description}{runtest_time}_{index}.json"
+        common.save_JSON(interval_fn, interval_stats)
+        log.debug(f"interval stats data saved in: {interval_fn}")
+    log.info(f"interval stats data saved in: {interval_fn}")
 
 
 def display_summary_stats(summary_stats):
@@ -328,31 +348,41 @@ def display_summary_stats(summary_stats):
     )
     upload_bps = f"{upload_bps}bps" if upload_bps else "N/A"
 
-    # only upstream test will display values
-    iperf3_rtt_stats = ""
-    rtt_elements = ["avg", "min", "max", "mdev"]
+    console = Console()
 
-    for rtt_element in rtt_elements:
-        iperf3_rtt_stat = (
-            f"  rtt {rtt_element}: {summary_stats[rtt_element]} ms\n"
-            if summary_stats[rtt_element]
-            else f"  rtt {rtt_element}: N/A\n"
-        )
-        iperf3_rtt_stats += iperf3_rtt_stat
+    table = Table(box=box.ASCII, title=f"Summary Stats (runtime: {summary_stats['timestamp']})")
+    table.add_column("type", justify="right")
+    table.add_column("rx", justify="right")
+    table.add_column("tx", justify="right")
+    table.add_column("rtt avg", justify="right")
+    table.add_column("rtt min", justify="right")
+    table.add_column("rtt max", justify="right")
+    table.add_column("rtt mdev", justify="right")
+    table.add_column("pckts_loss", justify="right")
 
-    print_summary_stats = (
-        f"runtime: {summary_stats['timestamp']}\n"
-        f"iperf3:\n"
-        f"  download: {download_bps}\n"
-        f"  upload: {upload_bps}\n"
-        f"{iperf3_rtt_stats}"
-        f"ICMP:\n"
-        f"  packets tx/rx/loss: {summary_stats['icmp_pckts_tx']}/{summary_stats['icmp_pckts_rx']}/{summary_stats['icmp_pckts_loss_perc']}\n"
-        f"  rtt avg: {summary_stats['icmp_rtt_avg']} ms\n"
-        f"  rtt min: {summary_stats['icmp_rtt_min']} ms\n"
-        f"  rtt max: {summary_stats['icmp_rtt_max']} ms\n"
-        f"  rtt mdev: {summary_stats['icmp_rtt_mdev']} ms\n"
-        # avg/max/mdev: /// ms\n"
+    # Add iperf3 row
+    table.add_row(
+        f"[bold]iperf3[/bold]",
+        download_bps,
+        upload_bps,
+        f"{summary_stats.get('avg', 'N/A')} ms",
+        f"{summary_stats.get('min', 'N/A')} ms",
+        f"{summary_stats.get('max', 'N/A')} ms",
+        f"{summary_stats.get('mdev', 'N/A')} ms",
+        ""
     )
 
-    print(f"# summary_stats \n{print_summary_stats}")
+    # Add ICMP row
+    table.add_row(
+        f"[bold]ICMP[/bold]",
+        f"{summary_stats['icmp_pckts_tx']} pckts",
+        f"{summary_stats['icmp_pckts_rx']} pckts",
+        f"{summary_stats['icmp_rtt_avg']} ms",
+        f"{summary_stats['icmp_rtt_min']} ms",
+        f"{summary_stats['icmp_rtt_max']} ms",
+        f"{summary_stats['icmp_rtt_mdev']} ms",
+        f"{summary_stats['icmp_pckts_loss_perc']}%"
+    )
+
+    console.print(table)
+

@@ -10,7 +10,7 @@ import sys
 
 from rich import print
 
-from modules import bufferbloat, probe, bdp, run_iperf
+from modules import bufferbloat, probe, bdp, run_iperf, single_test, all_tests
 from utils import args, common, run_commands, output_operations
 
 
@@ -288,43 +288,14 @@ def main():
 
     if args.obj.cmd == "bufferbloat":
         bufferbloat.bufferbloat_run()
+        
+    if args.obj.cmd == "all":
+        all_tests.all_tests_run()
 
     # default iperf run
     if not args.obj.cmd:
-
-        # run iperf3 probing
-        if not args.obj.no_probe and not args.obj.dry_run:
-            free_ports = run_commands.probe_iperf3(
-                args.obj.host, common.data["port_list"], required_ports=1
-            )
-
-            cmd = common.data["commands"][0]
-            cmd = re.sub(
-                r"-p\s+\d+\s",
-                f"-p {free_ports[0]} ",
-                cmd,
-            )
+        single_test.single_test_run()
         
-        scenario_cmds = {
-            "ping {} -c {} -D".format(args.obj.host, str(int(args.obj.time) + 10)): 2,
-            cmd: 0.1,
-        }
-
-        runtest_time = common.get_timestamp_now()
-        interval_stats, summary_stats = run_iperf.run(scenario_cmds)
-        summary_stats["description"] = args.obj.description
-        # summary_stats["timestamp"] = runtest_time
-
-        output_operations.display_summary_stats(summary_stats)
-        if args.obj.csv:
-            output_operations.save_to_CSV(
-                f"{args.obj.test_name}ST", runtest_time, summary_stats, interval_stats
-            )
-
-        if args.obj.json:
-            output_operations.save_to_JSON(
-                f"{args.obj.test_name}ST", runtest_time, summary_stats, interval_stats
-            )
 
 
 if __name__ == "__main__":
