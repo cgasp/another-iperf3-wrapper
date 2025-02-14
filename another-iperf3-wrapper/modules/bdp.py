@@ -3,7 +3,7 @@ import logging
 from rich import print
 from rich.panel import Panel
 
-from utils import args, common, output_operations
+from utils import args, common, output_operations, data_parsers
 
 log = logging.getLogger("another-iperf3-wrapper")
 
@@ -15,7 +15,7 @@ def bdp_run():
 
     measure_latency = common.run(cmd.split(), capture_output=True, text=True).stdout
 
-    latency_values = output_operations.parse_ping_output(measure_latency)
+    latency_values = data_parsers.parse_ping_output(measure_latency)
 
     log.debug(f"latency_values: {latency_values}")
 

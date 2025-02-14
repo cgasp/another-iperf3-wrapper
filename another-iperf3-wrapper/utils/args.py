@@ -229,7 +229,7 @@ Wrapper to expand iperf3 capabilities
         "--sleep",
         dest="sleep",
         action="store",
-        type=int,
+        type=float,
         default=config_default.get("sleep", 2),
         help="sleep between iterations (default: 1)",
     )

@@ -4,7 +4,7 @@ import logging
 from rich import print
 from rich.panel import Panel
 
-from utils import args, common, run_commands, output_operations
+from utils import args, common, run_commands, output_operations, data_parsers
 
 log = logging.getLogger("another-iperf3-wrapper")
 
@@ -41,12 +41,12 @@ def probe_run():
 
     output_commands = run_commands.run_commands(scenario_cmds)
 
-    output_commands = output_operations.parse_output_commands(output_commands)
+    output_commands = data_parsers.parse_output_commands(output_commands)
 
     for cmd, output in output_commands.items():
         if output["type"] == "iperf3":
 
-            streams_rtt = output_operations.calculate_streams_rtt_stats(
+            streams_rtt = data_parsers.calculate_streams_rtt_stats(
                 output_commands[cmd]["output_parsed"]["intervals"]
             )
 

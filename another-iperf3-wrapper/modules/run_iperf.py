@@ -1,6 +1,6 @@
 import logging
 
-from utils import args, common, run_commands, output_operations
+from utils import args, common, run_commands, output_operations, data_parsers
 
 log = logging.getLogger("another-iperf3-wrapper")
 
@@ -19,7 +19,7 @@ def run(scenario_cmds):
 
     output_commands = run_commands.run_commands(scenario_cmds)
 
-    output_commands = output_operations.parse_output_commands(output_commands)
+    output_commands = data_parsers.parse_output_commands(output_commands)
 
     # save raw output
     if args.obj.save_outputs:
@@ -68,7 +68,7 @@ def run(scenario_cmds):
                     else "upstream"
                 )
 
-                interval_stats = output_operations.set_iperf3_results_by_timestamp(
+                interval_stats = data_parsers.set_iperf3_results_by_timestamp(
                     interval_stats, stream_direction, values["output_parsed"]
                 )
 
@@ -81,7 +81,7 @@ def run(scenario_cmds):
                     0
                 ].get("rtt", False):
                     summary_stats.update(
-                        output_operations.calculate_streams_rtt_stats(
+                        data_parsers.calculate_streams_rtt_stats(
                             output_commands[cmd]["output_parsed"]["intervals"]
                         )
                     )
